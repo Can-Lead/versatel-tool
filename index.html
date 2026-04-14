@@ -614,7 +614,7 @@
 
               <div class="toolbar">
                 <button id="checkAddressBtn" type="button" class="btn-secondary">Adresse prüfen</button>
-                <button id="sendOfferBtn" type="button" class="btn-primary">Angebot versenden</button>
+                <button id="sendOfferBtn" type="button" class="btn-primary">Angebot als PDF erstellen</button>
               </div>
 
               <div class="info">
@@ -628,82 +628,20 @@
     </div>
   </div>
 
-  <script>
-    const productConfig = {
-      internet: {
-        label: "Internet",
-        products: {
-          connect: {
-            label: "1&1 Glasfaser Connect",
-            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
-            terms: ["36 Monate", "48 Monate", "60 Monate"],
-            slas: ["Basis", "Plus", "Profi"],
-            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
-          },
-          premium: {
-            label: "1&1 Glasfaser Premium",
-            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
-            terms: ["36 Monate", "48 Monate", "60 Monate"],
-            slas: ["Basis", "Plus", "Profi"],
-            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
-          },
-          business_pro: {
-            label: "1&1 Glasfaser Business Pro",
-            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
-            terms: ["36 Monate", "48 Monate", "60 Monate"],
-            slas: ["Basis", "Plus", "Profi"],
-            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
-          },
-          business_pro_regio: {
-            label: "1&1 Glasfaser Business Pro Regio 2.0",
-            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
-            terms: ["36 Monate", "48 Monate", "60 Monate"],
-            slas: ["Basis", "Plus", "Profi"],
-            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
-          },
-          connect_basic: {
-            label: "1&1 Glasfaser Connect Basic",
-            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
-            terms: ["36 Monate", "48 Monate", "60 Monate"],
-            slas: ["Basis", "Plus", "Profi"],
-            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
-          }
-        }
-      },
-      managed_wlan: {
-        label: "Managed WLAN",
-        products: {
-          unavailable: {
-            label: "Managed WLAN folgt",
-            bandwidths: [],
-            terms: [],
-            slas: [],
-            voices: []
-          }
-        }
-      },
-      uc: {
-        label: "Unified Communications",
-        products: {
-          unavailable: {
-            label: "Unified Communications folgt",
-            bandwidths: [],
-            terms: [],
-            slas: [],
-            voices: []
-          }
-        }
-      }
-    };
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="product-data.js"></script>
+<script>
+    const productConfig = window.PRODUCT_CATALOG.families;
 
     const state = {
       isLoggedIn: false,
       selectedFamily: "internet",
-      selectedProduct: "connect",
-      selectedBandwidth: "300 Mbit/s",
-      selectedTerm: "36 Monate",
-      selectedSla: "Basis",
-      selectedVoice: "SIP Einzelanschluss"
+      selectedProduct: "glasfaser_connect",
+      selectedVariant: "300_100",
+      selectedTerm: 36,
+      selectedSla: "basis",
+      selectedVoice: "sip_einzelanschluss",
+      availabilityStatus: "onnet"
     };
 
     const els = {
@@ -819,18 +757,68 @@
       return family?.products?.[state.selectedProduct] || null;
     }
 
+    function getCurrentVariant() {
+      const product = getCurrentProduct();
+      return (product?.variants || []).find(v => v.key === state.selectedVariant) || null;
+    }
+
+    function getCurrentTerm() {
+      const variant = getCurrentVariant();
+      return (variant?.terms || []).find(t => Number(t.months) === Number(state.selectedTerm)) || null;
+    }
+
+    function getCurrentSlaOption() {
+      const variant = getCurrentVariant();
+      return (variant?.slaOptions || []).find(s => s.key === state.selectedSla) || null;
+    }
+
+    function getCurrentVoiceOption() {
+      const variant = getCurrentVariant();
+      return (variant?.voiceOptions || []).find(v => v.key === state.selectedVoice) || null;
+    }
+
+    function formatEuro(value) {
+      const number = Number(value || 0);
+      return number.toLocaleString("de-DE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + " €";
+    }
+
     function ensureSelections() {
       const family = getCurrentFamily();
-      const productKeys = Object.keys(family.products);
+      const productKeys = Object.keys(family.products || {});
       if (!productKeys.includes(state.selectedProduct)) {
-        state.selectedProduct = productKeys[0];
+        state.selectedProduct = productKeys[0] || "";
       }
 
       const product = getCurrentProduct();
-      state.selectedBandwidth = product.bandwidths[0] || "";
-      state.selectedTerm = product.terms[0] || "";
-      state.selectedSla = product.slas[0] || "";
-      state.selectedVoice = product.voices[0] || "";
+      const variants = product?.variants || [];
+      const variantKeys = variants.map(v => v.key);
+
+      if (!variantKeys.includes(state.selectedVariant)) {
+        state.selectedVariant = variants[0]?.key || "";
+      }
+
+      const variant = getCurrentVariant();
+
+      const terms = variant?.terms || [];
+      const termValues = terms.map(t => Number(t.months));
+      if (!termValues.includes(Number(state.selectedTerm))) {
+        state.selectedTerm = terms[0]?.months || "";
+      }
+
+      const slaOptions = (variant?.slaOptions || []).filter(s => s.available);
+      const slaKeys = slaOptions.map(s => s.key);
+      if (!slaKeys.includes(state.selectedSla)) {
+        state.selectedSla = slaOptions[0]?.key || "";
+      }
+
+      const voiceOptions = (variant?.voiceOptions || []).filter(v => v.available);
+      const voiceKeys = voiceOptions.map(v => v.key);
+      if (!voiceKeys.includes(state.selectedVoice)) {
+        state.selectedVoice = voiceOptions[0]?.key || "";
+      }
     }
 
     function renderFamilies() {
@@ -853,7 +841,7 @@
 
     function renderProducts() {
       const family = getCurrentFamily();
-      const items = Object.entries(family.products).map(([key, value]) => ({
+      const items = Object.entries(family.products || {}).map(([key, value]) => ({
         value: key,
         label: value.label
       }));
@@ -872,51 +860,74 @@
 
     function renderOptions() {
       const product = getCurrentProduct();
+      const variants = product?.variants || [];
+      const variant = getCurrentVariant();
 
       createChoiceButtons(
         els.bandwidthChoices,
-        product.bandwidths.map(v => ({ value: v, label: v })),
-        state.selectedBandwidth,
+        variants.map(v => ({
+          value: v.key,
+          label: v.label
+        })),
+        state.selectedVariant,
         value => {
-          state.selectedBandwidth = value;
-          renderSummary();
+          state.selectedVariant = value;
+          ensureSelections();
+          renderAll();
         }
       );
 
       createChoiceButtons(
         els.termChoices,
-        product.terms.map(v => ({ value: v, label: v })),
-        state.selectedTerm,
+        (variant?.terms || []).map(v => ({
+          value: Number(v.months),
+          label: `${v.months} Monate`
+        })),
+        Number(state.selectedTerm),
         value => {
-          state.selectedTerm = value;
+          state.selectedTerm = Number(value);
           renderSummary();
         }
       );
 
       createChoiceButtons(
         els.slaChoices,
-        product.slas.map(v => ({ value: v, label: v })),
+        (variant?.slaOptions || []).map(v => ({
+          value: v.key,
+          label: v.label
+        })),
         state.selectedSla,
         value => {
           state.selectedSla = value;
           renderSummary();
+        },
+        item => {
+          const option = (variant?.slaOptions || []).find(v => v.key === item.value);
+          return !option?.available;
         }
       );
 
       createChoiceButtons(
         els.voiceChoices,
-        product.voices.map(v => ({ value: v, label: v })),
+        (variant?.voiceOptions || []).map(v => ({
+          value: v.key,
+          label: v.label
+        })),
         state.selectedVoice,
         value => {
           state.selectedVoice = value;
           renderSummary();
+        },
+        item => {
+          const option = (variant?.voiceOptions || []).find(v => v.key === item.value);
+          return !option?.available;
         }
       );
 
-      toggleEmptyState(els.bandwidthChoices, product.bandwidths.length, "Noch keine Bandbreiten hinterlegt.");
-      toggleEmptyState(els.termChoices, product.terms.length, "Noch keine Laufzeiten hinterlegt.");
-      toggleEmptyState(els.slaChoices, product.slas.length, "Noch keine SLA-Optionen hinterlegt.");
-      toggleEmptyState(els.voiceChoices, product.voices.length, "Noch keine Voice-Optionen hinterlegt.");
+      toggleEmptyState(els.bandwidthChoices, variants.length, "Noch keine Bandbreiten hinterlegt.");
+      toggleEmptyState(els.termChoices, (variant?.terms || []).length, "Noch keine Laufzeiten hinterlegt.");
+      toggleEmptyState(els.slaChoices, (variant?.slaOptions || []).length, "Noch keine SLA-Optionen hinterlegt.");
+      toggleEmptyState(els.voiceChoices, (variant?.voiceOptions || []).length, "Noch keine Voice-Optionen hinterlegt.");
     }
 
     function toggleEmptyState(container, length, text) {
@@ -941,7 +952,16 @@
     function renderSummary() {
       const family = getCurrentFamily();
       const product = getCurrentProduct();
+      const variant = getCurrentVariant();
+      const term = getCurrentTerm();
+      const sla = getCurrentSlaOption();
+      const voice = getCurrentVoiceOption();
       const data = getFormData();
+
+      const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
+      const monthlySla = Number(sla?.priceMonthly ?? 0);
+      const monthlyVoice = Number(voice?.priceMonthly ?? 0);
+      const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
 
       const rows = [
         ["Firmenname", data.companyName || "—"],
@@ -949,11 +969,22 @@
         ["Adresse", [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—"],
         ["Produktfamilie", family?.label || "—"],
         ["Produkt", product?.label || "—"],
-        ["Bandbreite", state.selectedBandwidth || "—"],
-        ["Vertragslaufzeit", state.selectedTerm || "—"],
-        ["SLA", state.selectedSla || "—"],
-        ["Voice-Dienst", state.selectedVoice || "—"]
+        ["Variante", variant?.label || "—"],
+        ["Vertragslaufzeit", term ? `${term.months} Monate` : "—"],
+        ["SLA", sla?.label || "—"],
+        ["Voice-Dienst", voice?.label || "—"],
+        ["Monatlicher Preis", formatEuro(monthlyTotal)],
+        ["Anschlusskosten", formatEuro(variant?.connectionPrice ?? 0)],
+        ["Hardware einmalig", formatEuro(variant?.hardwarePriceOnce ?? 0)]
       ];
+
+      if (variant?.oldMonthlyPrice) {
+        rows.splice(10, 0, ["Alter Monatspreis", formatEuro(variant.oldMonthlyPrice)]);
+      }
+
+      if (product?.availability?.note) {
+        rows.push(["Verfügbarkeit", product.availability.note]);
+      }
 
       els.summaryBox.innerHTML = rows.map(([left, right]) => `
         <div class="summary-row">
@@ -984,6 +1015,67 @@
       ];
 
       return required.every(Boolean);
+    }
+
+    function createOfferPdf() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const data = getFormData();
+      const family = getCurrentFamily();
+      const product = getCurrentProduct();
+      const variant = getCurrentVariant();
+      const term = getCurrentTerm();
+      const sla = getCurrentSlaOption();
+      const voice = getCurrentVoiceOption();
+
+      const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
+      const monthlySla = Number(sla?.priceMonthly ?? 0);
+      const monthlyVoice = Number(voice?.priceMonthly ?? 0);
+      const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
+
+      let y = 20;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("CAN Lead Angebotsübersicht", 14, y);
+      y += 12;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text(`Firma: ${data.companyName || "-"}`, 14, y); y += 7;
+      doc.text(`Ansprechpartner: ${[data.firstName, data.lastName].filter(Boolean).join(" ") || "-"}`, 14, y); y += 7;
+      doc.text(`Adresse: ${[data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "-"}`, 14, y); y += 7;
+      doc.text(`E-Mail: ${data.contactEmail || "-"}`, 14, y); y += 10;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Produktdaten", 14, y); y += 8;
+      doc.setFont("helvetica", "normal");
+
+      doc.text(`Produktfamilie: ${family?.label || "-"}`, 14, y); y += 7;
+      doc.text(`Produkt: ${product?.label || "-"}`, 14, y); y += 7;
+      doc.text(`Variante: ${variant?.label || "-"}`, 14, y); y += 7;
+      doc.text(`Laufzeit: ${term ? `${term.months} Monate` : "-"}`, 14, y); y += 7;
+      doc.text(`SLA: ${sla?.label || "-"}`, 14, y); y += 7;
+      doc.text(`Voice: ${voice?.label || "-"}`, 14, y); y += 10;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Konditionen", 14, y); y += 8;
+      doc.setFont("helvetica", "normal");
+
+      doc.text(`Monatlicher Preis: ${formatEuro(monthlyTotal)}`, 14, y); y += 7;
+      doc.text(`Anschlusskosten: ${formatEuro(variant?.connectionPrice ?? 0)}`, 14, y); y += 7;
+      doc.text(`Hardware einmalig: ${formatEuro(variant?.hardwarePriceOnce ?? 0)}`, 14, y); y += 10;
+
+      if (data.internalNote) {
+        doc.setFont("helvetica", "bold");
+        doc.text("Interne Notiz", 14, y); y += 8;
+        doc.setFont("helvetica", "normal");
+        doc.text(data.internalNote, 14, y);
+      }
+
+      const fileName = `angebot_${(data.companyName || "kunde").replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`;
+      doc.save(fileName);
     }
 
     els.loginBtn.addEventListener("click", () => {
@@ -1043,10 +1135,11 @@
         return;
       }
 
+      createOfferPdf();
+
       setStatus([
-        { type: "ok", text: "Datensatz ist vollständig vorbereitet." },
-        { type: "", text: "Nächster Schritt: Backend anbinden und an den Bot übergeben." },
-        { type: "", text: "Später wird hier Angebot erstellen, downloaden und per Mail senden ausgelöst." }
+        { type: "ok", text: "PDF wurde erstellt und heruntergeladen." },
+        { type: "", text: "Nächster Schritt: Backend anbinden, um das PDF automatisch per E-Mail zu versenden." }
       ]);
     });
 
