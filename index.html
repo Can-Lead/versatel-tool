@@ -1,12 +1,1058 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Versatel Tool</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CAN Lead | Versatel Angebots-Tool</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-2: #f8fbff;
+      --text: #17324d;
+      --muted: #6f88a3;
+      --border: rgba(23, 50, 77, 0.12);
+      --border-strong: rgba(23, 50, 77, 0.2);
+      --accent: #2d8cff;
+      --accent-2: #11b8c9;
+      --ok: #159b66;
+      --danger: #d84d68;
+      --warning: #c88911;
+      --shadow: 0 12px 30px rgba(18, 44, 71, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(45,140,255,0.08), transparent 18%),
+        radial-gradient(circle at top right, rgba(17,184,201,0.08), transparent 22%),
+        linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 38px;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      font-weight: 800;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 760px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(45,140,255,0.08);
+      color: #1f5eaf;
+      border: 1px solid rgba(45,140,255,0.14);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(5px);
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(23,50,77,0.75);
+      position: relative;
+    }
+
+    .section-title::after {
+      content: "";
+      display: block;
+      width: 44px;
+      height: 3px;
+      margin: 9px auto 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      opacity: 0.8;
+    }
+
+    .stepper {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+    }
+
+    .step-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(45,140,255,0.1);
+      color: #1f5eaf;
+      font-weight: 800;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+
+    .step-text strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+
+    .step-text span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0 6px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #f7fbff;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 15px;
+      min-height: 46px;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(45,140,255,0.45);
+      box-shadow: 0 0 0 4px rgba(45,140,255,0.10);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 94px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    button:hover {
+      filter: brightness(1.02);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      filter: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border: none;
+      box-shadow: 0 10px 20px rgba(45,140,255,0.18);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+    }
+
+    .btn-danger {
+      background: rgba(216,77,104,0.08);
+      color: var(--danger);
+      border: 1px solid rgba(216,77,104,0.18);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .toolbar button {
+      width: auto;
+      min-width: 160px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .locked {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .locked::after {
+      content: "Bitte zuerst einloggen";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(246, 250, 255, 0.72);
+      color: #234a75;
+      font-weight: 800;
+      font-size: 16px;
+      backdrop-filter: blur(3px);
+      z-index: 3;
+    }
+
+    .locked .lock-content {
+      pointer-events: none;
+      filter: blur(1px);
+      opacity: 0.62;
+    }
+
+    .panel-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .choice-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .choice-card {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 68px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(23,50,77,0.12);
+      background: #fff;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      text-align: left;
+      box-shadow: none;
+    }
+
+    .choice-card.active {
+      border-color: #2a67df;
+      box-shadow: 0 0 0 1px rgba(42,103,223,0.14);
+      background: #ffffff;
+    }
+
+    .choice-card.muted {
+      opacity: 0.48;
+      cursor: not-allowed;
+      background: #f3f5f7;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .summary {
+      border: 1px solid rgba(23,50,77,0.1);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f4f9fd 100%);
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      padding-bottom: 8px;
+    }
+
+    .summary-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .summary-row span:first-child {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .summary-row span:last-child {
+      text-align: right;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .status-box {
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfdff;
+      border: 1px solid rgba(23,50,77,0.08);
+      min-height: 150px;
+    }
+
+    .status-line {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      font-size: 14px;
+    }
+
+    .status-line:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-top: 5px;
+      flex: 0 0 auto;
+      background: #c8d4e2;
+    }
+
+    .dot.ok {
+      background: var(--ok);
+    }
+
+    .dot.warn {
+      background: var(--warning);
+    }
+
+    .dot.err {
+      background: var(--danger);
+    }
+
+    .info {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1080px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .choice-grid,
+      .row,
+      .row-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+
+      .toolbar button {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Versatel Tool</h1>
-  <p>Das Tool ist online.</p>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>CAN Lead <span style="color:#2d8cff;">Versatel Angebots-Tool</span></h1>
+        <p>
+          Kunden- und Produktdaten zentral erfassen, sauber strukturieren und später automatisiert
+          an den Versatel-Bot übergeben. Diese erste Version bildet die Oberfläche und Logik für
+          Login, Kundendaten, Produktauswahl und den Versandprozess.
+        </p>
+      </div>
+      <div class="badge" id="loginStateBadge">Nicht eingeloggt</div>
+    </div>
+
+    <div class="grid">
+      <aside class="panel-stack">
+        <div class="card">
+          <div class="section-title">Ablauf</div>
+          <div class="stepper">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text">
+                <strong>Einloggen</strong>
+                <span>Zugang zum Tool freischalten.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text">
+                <strong>Kundendaten erfassen</strong>
+                <span>Firma, Ansprechpartner und Adresse eintragen.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text">
+                <strong>Produkt konfigurieren</strong>
+                <span>Produktfamilie, Produkt und Optionen wählen.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-text">
+                <strong>Angebot versenden</strong>
+                <span>Später an den Bot und Mailversand übergeben.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Login</div>
+
+          <label for="loginUsername">Benutzername</label>
+          <input id="loginUsername" type="text" placeholder="Benutzername eingeben" />
+
+          <label for="loginPassword">Passwort</label>
+          <input id="loginPassword" type="password" placeholder="Passwort eingeben" />
+
+          <div class="toolbar">
+            <button id="loginBtn" class="btn-primary" type="button">Einloggen</button>
+            <button id="logoutBtn" class="btn-secondary" type="button" disabled>Abmelden</button>
+          </div>
+
+          <div class="info">
+            In dieser ersten Version ist der Login noch lokal simuliert. Später wird hier dein echtes
+            Backend angebunden.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Status</div>
+          <div class="status-box" id="statusBox">
+            <div class="status-line">
+              <div class="dot warn"></div>
+              <div>Warte auf Login.</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="panel-stack">
+        <section id="workflowSection" class="locked">
+          <div class="lock-content panel-stack">
+            <div class="card">
+              <div class="section-title">Kundendaten</div>
+
+              <div class="row">
+                <div>
+                  <label for="companyName">Firmenname</label>
+                  <input id="companyName" type="text" placeholder="z. B. Muster GmbH" />
+                </div>
+                <div>
+                  <label for="contactEmail">E-Mail (optional)</label>
+                  <input id="contactEmail" type="email" placeholder="z. B. kontakt@firma.de" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="firstName">Vorname</label>
+                  <input id="firstName" type="text" placeholder="Vorname" />
+                </div>
+                <div>
+                  <label for="lastName">Nachname</label>
+                  <input id="lastName" type="text" placeholder="Nachname" />
+                </div>
+              </div>
+
+              <div class="row-3">
+                <div>
+                  <label for="street">Straße</label>
+                  <input id="street" type="text" placeholder="Straße" />
+                </div>
+                <div>
+                  <label for="houseNumber">Hausnummer</label>
+                  <input id="houseNumber" type="text" placeholder="Nr." />
+                </div>
+                <div>
+                  <label for="postalCode">PLZ</label>
+                  <input id="postalCode" type="text" placeholder="PLZ" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="city">Ort</label>
+                  <input id="city" type="text" placeholder="Ort" />
+                </div>
+                <div>
+                  <label for="internalNote">Interne Notiz (optional)</label>
+                  <input id="internalNote" type="text" placeholder="z. B. Rückruf vereinbart" />
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Produktfamilie</div>
+              <div class="choice-grid" id="familyChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Produkt</div>
+              <div class="choice-grid" id="productChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Bandbreite</div>
+              <div class="choice-grid" id="bandwidthChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Vertragslaufzeit</div>
+              <div class="choice-grid" id="termChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Service Level Agreement</div>
+              <div class="choice-grid" id="slaChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Voice-Dienst</div>
+              <div class="choice-grid" id="voiceChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Zusammenfassung</div>
+              <div class="summary" id="summaryBox"></div>
+
+              <div class="toolbar">
+                <button id="checkAddressBtn" type="button" class="btn-secondary">Adresse prüfen</button>
+                <button id="sendOfferBtn" type="button" class="btn-primary">Angebot versenden</button>
+              </div>
+
+              <div class="info">
+                Die Buttons lösen in dieser ersten Version noch keine echte Versatel-Automation aus.
+                Sie bereiten bereits die Struktur vor, damit dein Backend später exakt mit diesen Werten arbeiten kann.
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const productConfig = {
+      internet: {
+        label: "Internet",
+        products: {
+          connect: {
+            label: "1&1 Glasfaser Connect",
+            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
+            terms: ["36 Monate", "48 Monate", "60 Monate"],
+            slas: ["Basis", "Plus", "Profi"],
+            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
+          },
+          premium: {
+            label: "1&1 Glasfaser Premium",
+            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
+            terms: ["36 Monate", "48 Monate", "60 Monate"],
+            slas: ["Basis", "Plus", "Profi"],
+            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
+          },
+          business_pro: {
+            label: "1&1 Glasfaser Business Pro",
+            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
+            terms: ["36 Monate", "48 Monate", "60 Monate"],
+            slas: ["Basis", "Plus", "Profi"],
+            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
+          },
+          business_pro_regio: {
+            label: "1&1 Glasfaser Business Pro Regio 2.0",
+            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
+            terms: ["36 Monate", "48 Monate", "60 Monate"],
+            slas: ["Basis", "Plus", "Profi"],
+            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
+          },
+          connect_basic: {
+            label: "1&1 Glasfaser Connect Basic",
+            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
+            terms: ["36 Monate", "48 Monate", "60 Monate"],
+            slas: ["Basis", "Plus", "Profi"],
+            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
+          }
+        }
+      },
+      managed_wlan: {
+        label: "Managed WLAN",
+        products: {
+          unavailable: {
+            label: "Managed WLAN folgt",
+            bandwidths: [],
+            terms: [],
+            slas: [],
+            voices: []
+          }
+        }
+      },
+      uc: {
+        label: "Unified Communications",
+        products: {
+          unavailable: {
+            label: "Unified Communications folgt",
+            bandwidths: [],
+            terms: [],
+            slas: [],
+            voices: []
+          }
+        }
+      }
+    };
+
+    const state = {
+      isLoggedIn: false,
+      selectedFamily: "internet",
+      selectedProduct: "connect",
+      selectedBandwidth: "300 Mbit/s",
+      selectedTerm: "36 Monate",
+      selectedSla: "Basis",
+      selectedVoice: "SIP Einzelanschluss"
+    };
+
+    const els = {
+      loginUsername: document.getElementById("loginUsername"),
+      loginPassword: document.getElementById("loginPassword"),
+      loginBtn: document.getElementById("loginBtn"),
+      logoutBtn: document.getElementById("logoutBtn"),
+      loginStateBadge: document.getElementById("loginStateBadge"),
+      workflowSection: document.getElementById("workflowSection"),
+      statusBox: document.getElementById("statusBox"),
+      familyChoices: document.getElementById("familyChoices"),
+      productChoices: document.getElementById("productChoices"),
+      bandwidthChoices: document.getElementById("bandwidthChoices"),
+      termChoices: document.getElementById("termChoices"),
+      slaChoices: document.getElementById("slaChoices"),
+      voiceChoices: document.getElementById("voiceChoices"),
+      summaryBox: document.getElementById("summaryBox"),
+      companyName: document.getElementById("companyName"),
+      contactEmail: document.getElementById("contactEmail"),
+      firstName: document.getElementById("firstName"),
+      lastName: document.getElementById("lastName"),
+      street: document.getElementById("street"),
+      houseNumber: document.getElementById("houseNumber"),
+      postalCode: document.getElementById("postalCode"),
+      city: document.getElementById("city"),
+      internalNote: document.getElementById("internalNote"),
+      checkAddressBtn: document.getElementById("checkAddressBtn"),
+      sendOfferBtn: document.getElementById("sendOfferBtn")
+    };
+
+    function setStatus(lines) {
+      els.statusBox.innerHTML = lines.map(line => `
+        <div class="status-line">
+          <div class="dot ${line.type || ''}"></div>
+          <div>${escapeHtml(line.text)}</div>
+        </div>
+      `).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function updateLoginUi() {
+      if (state.isLoggedIn) {
+        els.workflowSection.classList.remove("locked");
+        els.loginStateBadge.textContent = "Eingeloggt";
+        els.loginStateBadge.style.background = "rgba(21,155,102,0.10)";
+        els.loginStateBadge.style.color = "#15724c";
+        els.loginStateBadge.style.borderColor = "rgba(21,155,102,0.18)";
+        els.loginBtn.disabled = true;
+        els.logoutBtn.disabled = false;
+
+        setStatus([
+          { type: "ok", text: "Login erfolgreich. Workflow ist freigeschaltet." },
+          { type: "", text: "Kundendaten können jetzt erfasst werden." },
+          { type: "", text: "Produkte können jetzt ausgewählt werden." }
+        ]);
+      } else {
+        els.workflowSection.classList.add("locked");
+        els.loginStateBadge.textContent = "Nicht eingeloggt";
+        els.loginStateBadge.style.background = "rgba(45,140,255,0.08)";
+        els.loginStateBadge.style.color = "#1f5eaf";
+        els.loginStateBadge.style.borderColor = "rgba(45,140,255,0.14)";
+        els.loginBtn.disabled = false;
+        els.logoutBtn.disabled = true;
+
+        setStatus([
+          { type: "warn", text: "Warte auf Login." }
+        ]);
+      }
+    }
+
+    function createChoiceButtons(container, items, selectedValue, onClick, disabledFn = null) {
+      container.innerHTML = "";
+
+      items.forEach(item => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-card";
+        btn.textContent = item.label;
+
+        const isDisabled = disabledFn ? disabledFn(item) : false;
+        if (isDisabled) {
+          btn.classList.add("muted");
+          btn.disabled = true;
+        }
+
+        if (item.value === selectedValue) {
+          btn.classList.add("active");
+        }
+
+        btn.addEventListener("click", () => {
+          if (isDisabled) return;
+          onClick(item.value);
+        });
+
+        container.appendChild(btn);
+      });
+    }
+
+    function getCurrentFamily() {
+      return productConfig[state.selectedFamily];
+    }
+
+    function getCurrentProduct() {
+      const family = getCurrentFamily();
+      return family?.products?.[state.selectedProduct] || null;
+    }
+
+    function ensureSelections() {
+      const family = getCurrentFamily();
+      const productKeys = Object.keys(family.products);
+      if (!productKeys.includes(state.selectedProduct)) {
+        state.selectedProduct = productKeys[0];
+      }
+
+      const product = getCurrentProduct();
+      state.selectedBandwidth = product.bandwidths[0] || "";
+      state.selectedTerm = product.terms[0] || "";
+      state.selectedSla = product.slas[0] || "";
+      state.selectedVoice = product.voices[0] || "";
+    }
+
+    function renderFamilies() {
+      const items = Object.entries(productConfig).map(([key, value]) => ({
+        value: key,
+        label: value.label
+      }));
+
+      createChoiceButtons(
+        els.familyChoices,
+        items,
+        state.selectedFamily,
+        value => {
+          state.selectedFamily = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+    }
+
+    function renderProducts() {
+      const family = getCurrentFamily();
+      const items = Object.entries(family.products).map(([key, value]) => ({
+        value: key,
+        label: value.label
+      }));
+
+      createChoiceButtons(
+        els.productChoices,
+        items,
+        state.selectedProduct,
+        value => {
+          state.selectedProduct = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+    }
+
+    function renderOptions() {
+      const product = getCurrentProduct();
+
+      createChoiceButtons(
+        els.bandwidthChoices,
+        product.bandwidths.map(v => ({ value: v, label: v })),
+        state.selectedBandwidth,
+        value => {
+          state.selectedBandwidth = value;
+          renderSummary();
+        }
+      );
+
+      createChoiceButtons(
+        els.termChoices,
+        product.terms.map(v => ({ value: v, label: v })),
+        state.selectedTerm,
+        value => {
+          state.selectedTerm = value;
+          renderSummary();
+        }
+      );
+
+      createChoiceButtons(
+        els.slaChoices,
+        product.slas.map(v => ({ value: v, label: v })),
+        state.selectedSla,
+        value => {
+          state.selectedSla = value;
+          renderSummary();
+        }
+      );
+
+      createChoiceButtons(
+        els.voiceChoices,
+        product.voices.map(v => ({ value: v, label: v })),
+        state.selectedVoice,
+        value => {
+          state.selectedVoice = value;
+          renderSummary();
+        }
+      );
+
+      toggleEmptyState(els.bandwidthChoices, product.bandwidths.length, "Noch keine Bandbreiten hinterlegt.");
+      toggleEmptyState(els.termChoices, product.terms.length, "Noch keine Laufzeiten hinterlegt.");
+      toggleEmptyState(els.slaChoices, product.slas.length, "Noch keine SLA-Optionen hinterlegt.");
+      toggleEmptyState(els.voiceChoices, product.voices.length, "Noch keine Voice-Optionen hinterlegt.");
+    }
+
+    function toggleEmptyState(container, length, text) {
+      if (length > 0) return;
+      container.innerHTML = `<div class="subtle">${escapeHtml(text)}</div>`;
+    }
+
+    function getFormData() {
+      return {
+        companyName: els.companyName.value.trim(),
+        contactEmail: els.contactEmail.value.trim(),
+        firstName: els.firstName.value.trim(),
+        lastName: els.lastName.value.trim(),
+        street: els.street.value.trim(),
+        houseNumber: els.houseNumber.value.trim(),
+        postalCode: els.postalCode.value.trim(),
+        city: els.city.value.trim(),
+        internalNote: els.internalNote.value.trim()
+      };
+    }
+
+    function renderSummary() {
+      const family = getCurrentFamily();
+      const product = getCurrentProduct();
+      const data = getFormData();
+
+      const rows = [
+        ["Firmenname", data.companyName || "—"],
+        ["Ansprechpartner", [data.firstName, data.lastName].filter(Boolean).join(" ") || "—"],
+        ["Adresse", [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—"],
+        ["Produktfamilie", family?.label || "—"],
+        ["Produkt", product?.label || "—"],
+        ["Bandbreite", state.selectedBandwidth || "—"],
+        ["Vertragslaufzeit", state.selectedTerm || "—"],
+        ["SLA", state.selectedSla || "—"],
+        ["Voice-Dienst", state.selectedVoice || "—"]
+      ];
+
+      els.summaryBox.innerHTML = rows.map(([left, right]) => `
+        <div class="summary-row">
+          <span>${escapeHtml(left)}</span>
+          <span>${escapeHtml(right)}</span>
+        </div>
+      `).join("");
+    }
+
+    function renderAll() {
+      renderFamilies();
+      renderProducts();
+      renderOptions();
+      renderSummary();
+    }
+
+    function validateRequiredFields() {
+      const data = getFormData();
+
+      const required = [
+        data.companyName,
+        data.firstName,
+        data.lastName,
+        data.street,
+        data.houseNumber,
+        data.postalCode,
+        data.city
+      ];
+
+      return required.every(Boolean);
+    }
+
+    els.loginBtn.addEventListener("click", () => {
+      const username = els.loginUsername.value.trim();
+      const password = els.loginPassword.value.trim();
+
+      if (!username || !password) {
+        setStatus([
+          { type: "err", text: "Bitte Benutzername und Passwort eingeben." }
+        ]);
+        return;
+      }
+
+      state.isLoggedIn = true;
+      updateLoginUi();
+    });
+
+    els.logoutBtn.addEventListener("click", () => {
+      state.isLoggedIn = false;
+      updateLoginUi();
+    });
+
+    [
+      els.companyName,
+      els.contactEmail,
+      els.firstName,
+      els.lastName,
+      els.street,
+      els.houseNumber,
+      els.postalCode,
+      els.city,
+      els.internalNote
+    ].forEach(el => {
+      el.addEventListener("input", renderSummary);
+    });
+
+    els.checkAddressBtn.addEventListener("click", () => {
+      if (!validateRequiredFields()) {
+        setStatus([
+          { type: "err", text: "Bitte zuerst alle Pflichtfelder für die Adresse ausfüllen." }
+        ]);
+        return;
+      }
+
+      setStatus([
+        { type: "ok", text: "Frontend-Daten sind vollständig." },
+        { type: "", text: "Später wird hier der Versatel-Adresscheck gestartet." },
+        { type: "", text: "Danach kann das Produkt automatisiert gewählt werden." }
+      ]);
+    });
+
+    els.sendOfferBtn.addEventListener("click", () => {
+      if (!validateRequiredFields()) {
+        setStatus([
+          { type: "err", text: "Bitte zuerst alle Pflichtfelder für das Angebot ausfüllen." }
+        ]);
+        return;
+      }
+
+      setStatus([
+        { type: "ok", text: "Datensatz ist vollständig vorbereitet." },
+        { type: "", text: "Nächster Schritt: Backend anbinden und an den Bot übergeben." },
+        { type: "", text: "Später wird hier Angebot erstellen, downloaden und per Mail senden ausgelöst." }
+      ]);
+    });
+
+    ensureSelections();
+    renderAll();
+    updateLoginUi();
+  </script>
 </body>
 </html>
