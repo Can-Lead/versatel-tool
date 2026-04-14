@@ -758,11 +758,11 @@
     const state = {
       isLoggedIn: false,
       selectedFamily: "internet",
-      selectedProduct: "glasfaser_connect",
-      selectedVariant: "300_100",
-      selectedTerm: 36,
+      selectedProduct: "office_fast_secure",
+      selectedVariant: "150_50",
+      selectedTerm: 24,
       selectedSla: "basis",
-      selectedVoice: "sip_einzelanschluss",
+      selectedVoice: "",
       availabilityStatus: "onnet"
     };
 
@@ -1174,7 +1174,7 @@
 
     function createOfferPdf() {
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
 
       const data = getFormData();
       const family = getCurrentFamily();
@@ -1189,45 +1189,108 @@
       const monthlyVoice = Number(voice?.priceMonthly ?? 0);
       const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
 
-      let y = 20;
+      const pageWidth = doc.internal.pageSize.getWidth();
 
+      doc.setFillColor(246, 249, 253);
+      doc.rect(0, 0, pageWidth, 297, "F");
+
+      doc.setFillColor(25, 61, 111);
+      doc.rect(0, 0, pageWidth, 24, "F");
+
+      doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
-      doc.text("CAN Lead Angebotsübersicht", 14, y);
-      y += 12;
+      doc.text("CAN Lead Angebotsübersicht", 14, 15);
 
+      doc.setTextColor(23, 50, 77);
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text("Individuelles Lösungskonzept", 14, 31);
+
+      doc.setDrawColor(220, 228, 236);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(14, 36, 182, 34, 4, 4, "FD");
+
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
-      doc.text(`Firma: ${data.companyName || "-"}`, 14, y); y += 7;
-      doc.text(`Ansprechpartner: ${[data.firstName, data.lastName].filter(Boolean).join(" ") || "-"}`, 14, y); y += 7;
-      doc.text(`Adresse: ${[data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "-"}`, 14, y); y += 7;
-      doc.text(`E-Mail: ${data.contactEmail || "-"}`, 14, y); y += 10;
+      doc.text("Kundendaten", 18, 45);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Firma: ${data.companyName || "-"}`, 18, 52);
+      doc.text(`Ansprechpartner: ${[data.firstName, data.lastName].filter(Boolean).join(" ") || "-"}`, 18, 58);
+      doc.text(`Adresse: ${[data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "-"}`, 18, 64);
+
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(14, 76, 182, 60, 4, 4, "FD");
 
       doc.setFont("helvetica", "bold");
-      doc.text("Produktdaten", 14, y); y += 8;
-      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text("Produktübersicht", 18, 85);
 
-      doc.text(`Produktfamilie: ${family?.label || "-"}`, 14, y); y += 7;
-      doc.text(`Produkt: ${product?.label || "-"}`, 14, y); y += 7;
-      doc.text(`Variante: ${variant?.label || "-"}`, 14, y); y += 7;
-      doc.text(`Laufzeit: ${term ? `${term.months} Monate` : "-"}`, 14, y); y += 7;
-      doc.text(`SLA: ${sla?.label || "-"}`, 14, y); y += 7;
-      doc.text(`Voice: ${voice?.label || "-"}`, 14, y); y += 10;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Produktfamilie: ${family?.label || "-"}`, 18, 93);
+      doc.text(`Produkt: ${product?.label || "-"}`, 18, 99);
+      doc.text(`Bandbreite: ${variant?.label || "-"}`, 18, 105);
+      doc.text(`Vertragslaufzeit: ${term ? `${term.months} Monate` : "-"}`, 18, 111);
+      doc.text(`Service Level: ${sla?.label || "-"}`, 18, 117);
+      doc.text(`Voice: ${voice?.label || "-"}`, 18, 123);
+
+      doc.setFillColor(25, 61, 111);
+      doc.roundedRect(14, 144, 86, 34, 4, 4, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Monatlicher Preis", 18, 154);
+
+      doc.setFontSize(22);
+      doc.text(formatEuro(monthlyTotal), 18, 167);
+
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(220, 228, 236);
+      doc.roundedRect(110, 144, 86, 34, 4, 4, "FD");
+
+      doc.setTextColor(23, 50, 77);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Einmalige Kosten", 114, 154);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Anschluss: ${formatEuro(variant?.connectionPrice ?? 0)}`, 114, 163);
+      doc.text(`Hardware: ${formatEuro(variant?.hardwarePriceOnce ?? 0)}`, 114, 170);
+
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(14, 186, 182, 42, 4, 4, "FD");
 
       doc.setFont("helvetica", "bold");
-      doc.text("Konditionen", 14, y); y += 8;
+      doc.setFontSize(11);
+      doc.text("Hinweise", 18, 196);
+
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const noteLines = [
+        "Alle angegebenen Preise verstehen sich als Netto-Preise zzgl. der gesetzlichen Mehrwertsteuer.",
+        product?.availability?.note || "",
+        data.internalNote ? `Interne Notiz: ${data.internalNote}` : ""
+      ].filter(Boolean);
 
-      doc.text(`Monatlicher Preis: ${formatEuro(monthlyTotal)}`, 14, y); y += 7;
-      doc.text(`Anschlusskosten: ${formatEuro(variant?.connectionPrice ?? 0)}`, 14, y); y += 7;
-      doc.text(`Hardware einmalig: ${formatEuro(variant?.hardwarePriceOnce ?? 0)}`, 14, y); y += 10;
+      let noteY = 203;
+      noteLines.forEach(line => {
+        const split = doc.splitTextToSize(line, 170);
+        doc.text(split, 18, noteY);
+        noteY += split.length * 4.5;
+      });
 
-      if (data.internalNote) {
-        doc.setFont("helvetica", "bold");
-        doc.text("Interne Notiz", 14, y); y += 8;
-        doc.setFont("helvetica", "normal");
-        doc.text(data.internalNote, 14, y);
-      }
+      doc.setDrawColor(210, 220, 232);
+      doc.line(14, 276, 196, 276);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(107, 127, 149);
+      doc.text("CAN Lead", 14, 282);
+      doc.text("Erstellt mit dem Versatel Angebots-Tool", 196, 282, { align: "right" });
 
       const fileName = `angebot_${(data.companyName || "kunde").replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`;
       doc.save(fileName);
