@@ -1,0 +1,1 @@
+window.PARTNER_LOGO_DATA_URL = "";
