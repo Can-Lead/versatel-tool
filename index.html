@@ -1016,7 +1016,7 @@
         Number(state.selectedTerm),
         value => {
           state.selectedTerm = Number(value);
-          renderSummary();
+          renderAll();
         }
       );
 
@@ -1029,7 +1029,7 @@
         state.selectedSla,
         value => {
           state.selectedSla = value;
-          renderSummary();
+          renderAll();
         },
         item => {
           const option = (variant?.slaOptions || []).find(v => v.key === item.value);
@@ -1046,7 +1046,7 @@
         state.selectedVoice,
         value => {
           state.selectedVoice = value;
-          renderSummary();
+          renderAll();
         },
         item => {
           const option = (variant?.voiceOptions || []).find(v => v.key === item.value);
