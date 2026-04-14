@@ -83,7 +83,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: 360px minmax(0, 1fr);
+      grid-template-columns: 360px minmax(0, 1fr) 300px;
       gap: 18px;
       align-items: start;
     }
@@ -286,6 +286,84 @@
     .panel-stack {
       display: grid;
       gap: 18px;
+      min-width: 0;
+    }
+
+    .sticky-side {
+      position: sticky;
+      top: 20px;
+      display: grid;
+      gap: 18px;
+      align-self: start;
+    }
+
+    .price-preview {
+      border: 1px solid rgba(23,50,77,0.10);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f2f8fd 100%);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .price-main {
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid rgba(23,50,77,0.08);
+      padding: 16px;
+    }
+
+    .price-kicker {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .price-big {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .price-sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .price-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .price-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      padding-bottom: 8px;
+    }
+
+    .price-item:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .price-item span:first-child {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .price-item span:last-child {
+      font-size: 14px;
+      font-weight: 800;
+      text-align: right;
     }
 
     .choice-group {
@@ -438,6 +516,10 @@
 
       .toolbar button {
         width: 100%;
+      }
+
+      .sticky-side {
+        position: static;
       }
     }
   </style>
@@ -625,10 +707,50 @@
           </div>
         </section>
       </main>
+
+      <aside class="sticky-side">
+        <div class="card">
+          <div class="section-title">Preisvorschau</div>
+          <div class="price-preview" id="pricePreviewBox">
+            <div class="price-main">
+              <div class="price-kicker">Monatlich</div>
+              <div class="price-big" id="priceMonthlyMain">0,00 €</div>
+              <div class="price-sub" id="pricePreviewProduct">Noch kein Produkt gewählt</div>
+            </div>
+
+            <div class="price-list">
+              <div class="price-item">
+                <span>Alter Monatspreis</span>
+                <span id="priceOldMonthly">—</span>
+              </div>
+              <div class="price-item">
+                <span>Anschlusskosten</span>
+                <span id="priceConnection">0,00 €</span>
+              </div>
+              <div class="price-item">
+                <span>Hardware einmalig</span>
+                <span id="priceHardware">0,00 €</span>
+              </div>
+              <div class="price-item">
+                <span>Laufzeit</span>
+                <span id="priceTerm">—</span>
+              </div>
+              <div class="price-item">
+                <span>SLA</span>
+                <span id="priceSla">—</span>
+              </div>
+              <div class="price-item">
+                <span>Voice</span>
+                <span id="priceVoice">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="product-data.js"></script>
 <script>
     const productConfig = window.PRODUCT_CATALOG.families;
@@ -669,7 +791,15 @@
       city: document.getElementById("city"),
       internalNote: document.getElementById("internalNote"),
       checkAddressBtn: document.getElementById("checkAddressBtn"),
-      sendOfferBtn: document.getElementById("sendOfferBtn")
+      sendOfferBtn: document.getElementById("sendOfferBtn"),
+      priceMonthlyMain: document.getElementById("priceMonthlyMain"),
+      pricePreviewProduct: document.getElementById("pricePreviewProduct"),
+      priceOldMonthly: document.getElementById("priceOldMonthly"),
+      priceConnection: document.getElementById("priceConnection"),
+      priceHardware: document.getElementById("priceHardware"),
+      priceTerm: document.getElementById("priceTerm"),
+      priceSla: document.getElementById("priceSla"),
+      priceVoice: document.getElementById("priceVoice")
     };
 
     function setStatus(lines) {
@@ -992,6 +1122,31 @@
           <span>${escapeHtml(right)}</span>
         </div>
       `).join("");
+
+      if (els.priceMonthlyMain) {
+        els.priceMonthlyMain.textContent = formatEuro(monthlyTotal);
+      }
+      if (els.pricePreviewProduct) {
+        els.pricePreviewProduct.textContent = `${product?.label || "—"} | ${variant?.label || "—"}`;
+      }
+      if (els.priceOldMonthly) {
+        els.priceOldMonthly.textContent = variant?.oldMonthlyPrice ? formatEuro(variant.oldMonthlyPrice) : "—";
+      }
+      if (els.priceConnection) {
+        els.priceConnection.textContent = formatEuro(variant?.connectionPrice ?? 0);
+      }
+      if (els.priceHardware) {
+        els.priceHardware.textContent = formatEuro(variant?.hardwarePriceOnce ?? 0);
+      }
+      if (els.priceTerm) {
+        els.priceTerm.textContent = term ? `${term.months} Monate` : "—";
+      }
+      if (els.priceSla) {
+        els.priceSla.textContent = sla?.label || "—";
+      }
+      if (els.priceVoice) {
+        els.priceVoice.textContent = voice?.label || "—";
+      }
     }
 
     function renderAll() {
