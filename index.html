@@ -627,9 +627,19 @@
       </main>
     </div>
   </div>
-  <script src="product-data.js"></script>
+
   <script>
-    const productConfig = window.PRODUCT_CATALOG.families;
+    const productConfig = {
+      internet: {
+        label: "Internet",
+        products: {
+          connect: {
+            label: "1&1 Glasfaser Connect",
+            bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
+            terms: ["36 Monate", "48 Monate", "60 Monate"],
+            slas: ["Basis", "Plus", "Profi"],
+            voices: ["SIP Einzelanschluss", "SIP DDi Sprachkanäle"]
+          },
           premium: {
             label: "1&1 Glasfaser Premium",
             bandwidths: ["300 Mbit/s", "600 Mbit/s", "1000 Mbit/s"],
