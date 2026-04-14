@@ -376,9 +376,9 @@ window.PRODUCT_CATALOG = {
           ]
         },
 
-        office_fast_secure_150: {
-          key: "office_fast_secure_150",
-          label: "1&1 Office Fast & Secure 150",
+        office_fast_secure: {
+          key: "office_fast_secure",
+          label: "1&1 Office Fast & Secure",
           availability: {
             allowedStatuses: ["onnet", "buildings_passed"],
             note: "Nur für Onnet und Buildings Passed"
@@ -403,17 +403,7 @@ window.PRODUCT_CATALOG = {
               ],
               voiceOptions: [],
               marketingBadges: ["Wechslerbonus"]
-            }
-          ]
-        },
-
-        office_fast_secure_300: {
-          key: "office_fast_secure_300",
-          label: "1&1 Office Fast & Secure 300",
-          availability: {
-            allowedStatuses: ["onnet", "buildings_passed"]
-          },
-          variants: [
+            },
             {
               key: "300_100",
               label: "300 / 100 Mbit/s",
@@ -433,17 +423,7 @@ window.PRODUCT_CATALOG = {
               ],
               voiceOptions: [],
               marketingBadges: ["Wechslerbonus"]
-            }
-          ]
-        },
-
-        office_fast_secure_600: {
-          key: "office_fast_secure_600",
-          label: "1&1 Office Fast & Secure 600",
-          availability: {
-            allowedStatuses: ["onnet", "buildings_passed"]
-          },
-          variants: [
+            },
             {
               key: "600_200",
               label: "600 / 200 Mbit/s",
@@ -463,17 +443,7 @@ window.PRODUCT_CATALOG = {
               ],
               voiceOptions: [],
               marketingBadges: ["Wechslerbonus", "Bestseller"]
-            }
-          ]
-        },
-
-        office_fast_secure_1000: {
-          key: "office_fast_secure_1000",
-          label: "1&1 Office Fast & Secure 1000",
-          availability: {
-            allowedStatuses: ["onnet", "buildings_passed"]
-          },
-          variants: [
+            },
             {
               key: "1000_300",
               label: "1000 / 300 Mbit/s",
