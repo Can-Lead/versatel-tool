@@ -694,6 +694,11 @@
               <div class="section-title">Zusammenfassung</div>
               <div class="summary" id="summaryBox"></div>
 
+              <label style="display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14px; color:var(--text); font-weight:700;">
+                <input id="waiveHardwareCheckbox" type="checkbox" style="width:auto; min-height:auto; transform:scale(1.1);" />
+                Hardwarepreis erlassen
+              </label>
+
               <div class="toolbar">
                 <button id="checkAddressBtn" type="button" class="btn-secondary">Adresse prüfen</button>
                 <button id="sendOfferBtn" type="button" class="btn-primary">Angebot als PDF erstellen</button>
@@ -752,6 +757,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="product-data.js"></script>
+<script src="partner-logo.js"></script>
 <script>
     const productConfig = window.PRODUCT_CATALOG.families;
 
@@ -763,7 +769,8 @@
       selectedTerm: 24,
       selectedSla: "basis",
       selectedVoice: "",
-      availabilityStatus: "onnet"
+      availabilityStatus: "onnet",
+      waiveHardwarePrice: false
     };
 
     const els = {
@@ -792,6 +799,7 @@
       internalNote: document.getElementById("internalNote"),
       checkAddressBtn: document.getElementById("checkAddressBtn"),
       sendOfferBtn: document.getElementById("sendOfferBtn"),
+      waiveHardwareCheckbox: document.getElementById("waiveHardwareCheckbox"),
       priceMonthlyMain: document.getElementById("priceMonthlyMain"),
       pricePreviewProduct: document.getElementById("pricePreviewProduct"),
       priceOldMonthly: document.getElementById("priceOldMonthly"),
@@ -913,6 +921,11 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       }) + " €";
+    }
+
+    function getEffectiveHardwarePrice(variant) {
+      if (!variant) return 0;
+      return state.waiveHardwarePrice ? 0 : Number(variant.hardwarePriceOnce ?? 0);
     }
 
     function ensureSelections() {
@@ -1088,6 +1101,7 @@
       const voice = getCurrentVoiceOption();
       const data = getFormData();
 
+      const hardwarePrice = getEffectiveHardwarePrice(variant);
       const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
       const monthlySla = Number(sla?.priceMonthly ?? 0);
       const monthlyVoice = Number(voice?.priceMonthly ?? 0);
@@ -1105,7 +1119,7 @@
         ["Voice-Dienst", voice?.label || "—"],
         ["Monatlicher Preis", formatEuro(monthlyTotal)],
         ["Anschlusskosten", formatEuro(variant?.connectionPrice ?? 0)],
-        ["Hardware einmalig", formatEuro(variant?.hardwarePriceOnce ?? 0)]
+        ["Hardware einmalig", state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)]
       ];
 
       if (variant?.oldMonthlyPrice) {
@@ -1136,7 +1150,7 @@
         els.priceConnection.textContent = formatEuro(variant?.connectionPrice ?? 0);
       }
       if (els.priceHardware) {
-        els.priceHardware.textContent = formatEuro(variant?.hardwarePriceOnce ?? 0);
+        els.priceHardware.textContent = state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice);
       }
       if (els.priceTerm) {
         els.priceTerm.textContent = term ? `${term.months} Monate` : "—";
@@ -1184,11 +1198,11 @@
   const sla = getCurrentSlaOption();
   const voice = getCurrentVoiceOption();
 
+  const hardwarePrice = getEffectiveHardwarePrice(variant);
   const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
   const monthlySla = Number(sla?.priceMonthly ?? 0);
   const monthlyVoice = Number(voice?.priceMonthly ?? 0);
   const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
-
   const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFillColor(247, 250, 253);
@@ -1213,23 +1227,27 @@
   doc.setDrawColor(200, 210, 222);
   doc.line(150, 8, 150, 38);
 
-  // Logo-Platzhalter oben rechts
-  doc.setDrawColor(28, 73, 128);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(160, 10, 24, 20, "FD");
-  doc.setTextColor(28, 73, 128);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("1&1", 168.5, 16, { align: "center" });
-  doc.setFontSize(6);
-  doc.text("VERSATEL", 172, 21, { align: "center" });
-  doc.setFontSize(5);
-  doc.text("PARTNER", 172, 26, { align: "center" });
+  // Festes Partnerlogo oben rechts
+  if (window.PARTNER_LOGO_DATA_URL) {
+    doc.addImage(window.PARTNER_LOGO_DATA_URL, "PNG", 154, 9, 36, 18);
+  } else {
+    doc.setDrawColor(28, 73, 128);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(160, 10, 24, 20, "FD");
+    doc.setTextColor(28, 73, 128);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("1&1", 168.5, 16, { align: "center" });
+    doc.setFontSize(6);
+    doc.text("VERSATEL", 172, 21, { align: "center" });
+    doc.setFontSize(5);
+    doc.text("PARTNER", 172, 26, { align: "center" });
 
-  doc.setTextColor(23, 50, 77);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("Logo-Platzhalter", 172, 34, { align: "center" });
+    doc.setTextColor(23, 50, 77);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Logo-Platzhalter", 172, 34, { align: "center" });
+  }
 
   doc.setFontSize(8);
   doc.setTextColor(92, 114, 138);
@@ -1282,7 +1300,7 @@
   doc.text(`Vertragslaufzeit: ${term ? `${term.months} Monate` : "-"}`, 18, 168);
   doc.text(`Service-Level: ${sla?.label || "-"}`, 18, 173);
 
-  doc.text(formatEuro((variant?.connectionPrice ?? 0) + (variant?.hardwarePriceOnce ?? 0)), 137, 163, { align: "right" });
+  doc.text(formatEuro((variant?.connectionPrice ?? 0) + hardwarePrice), 137, 163, { align: "right" });
   doc.text(formatEuro(monthlyTotal), 192, 163, { align: "right" });
 
   doc.line(14, 184, 196, 184);
@@ -1294,7 +1312,7 @@
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.text("Einmaliges Entgelt", 16, 194);
-  doc.text(formatEuro((variant?.connectionPrice ?? 0) + (variant?.hardwarePriceOnce ?? 0)), 192, 194, { align: "right" });
+  doc.text(formatEuro((variant?.connectionPrice ?? 0) + hardwarePrice), 192, 194, { align: "right" });
 
   doc.line(14, 199, 196, 199);
 
@@ -1355,6 +1373,13 @@
     ].forEach(el => {
       el.addEventListener("input", renderSummary);
     });
+
+    if (els.waiveHardwareCheckbox) {
+      els.waiveHardwareCheckbox.addEventListener("change", () => {
+        state.waiveHardwarePrice = els.waiveHardwareCheckbox.checked;
+        renderSummary();
+      });
+    }
 
     els.checkAddressBtn.addEventListener("click", () => {
       if (!validateRequiredFields()) {
