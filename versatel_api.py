@@ -12,6 +12,15 @@ from versatel_availability_ranked import (
 app = FastAPI()
 
 
+@app.get("/api/versatel/debug-ping")
+def versatel_debug_ping():
+    return {
+        "ok": True,
+        "source": "fastapi",
+        "message": "debug-ping-aus-versatel_api.py"
+    }
+
+
 class VersatelCheckRequest(BaseModel):
     street: str
     houseNumber: str
@@ -117,6 +126,7 @@ def versatel_check(payload: VersatelCheckRequest):
         print(f"[VERSATEL API] Check-Ergebnis: status={result.status} error={result.error}")
 
         return {
+            "debug_source": "versatel_api_check_current_build",
             "status": result.status,
             "error": result.error,
             "matches": result.matches,
