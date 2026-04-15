@@ -1301,12 +1301,12 @@
       els.checkAddressBtn.textContent = "Adresse wird geprüft ...";
 
       setStatus([
-        { type: "warn", text: "Automatischer Versatel-Login wird gestartet." },
-        { type: "", text: "Danach wird die Adresse automatisch geprüft." }
+        { type: "warn", text: "Adresse wird mit bestehender Versatel-Session geprüft." },
+        { type: "", text: "Es wird kein automatischer Login mehr gestartet." }
       ]);
 
       try {
-        const response = await fetch("/api/versatel/check-address-with-login", {
+        const response = await fetch("/api/versatel/check", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -1369,6 +1369,12 @@
         }
       } catch (error) {
         renderAvailabilityResults([]);
+
+        if (String(error.message || "").includes("401")) {
+          state.isLoggedIn = false;
+          updateLoginUi();
+        }
+
         setStatus([
           { type: "err", text: error.message || "Adressprüfung fehlgeschlagen." }
         ]);
@@ -1705,7 +1711,7 @@
   doc.save(fileName);
 }
 
-    els.loginBtn.addEventListener("click", () => {
+    els.loginBtn.addEventListener("click", async () => {
       const username = els.loginUsername.value.trim();
       const password = els.loginPassword.value.trim();
 
@@ -1716,8 +1722,60 @@
         return;
       }
 
-      state.isLoggedIn = true;
-      updateLoginUi();
+      const originalButtonText = els.loginBtn.textContent;
+      els.loginBtn.disabled = true;
+      els.loginBtn.textContent = "Login läuft ...";
+
+      setStatus([
+        { type: "warn", text: "Versatel-Login wird gestartet." },
+        { type: "", text: "Bitte warten, bis die Session aufgebaut wurde." }
+      ]);
+
+      try {
+        const response = await fetch("/api/versatel/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username,
+            password
+          })
+        });
+
+        const rawText = await response.text();
+        let payload = {};
+
+        if (rawText && rawText.trim()) {
+          try {
+            payload = JSON.parse(rawText);
+          } catch (parseError) {
+            throw new Error(`Server antwortet nicht als JSON. HTTP ${response.status}`);
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(payload?.detail || payload?.error || `Login fehlgeschlagen. HTTP ${response.status}`);
+        }
+
+        state.isLoggedIn = true;
+        updateLoginUi();
+
+        setStatus([
+          { type: "ok", text: payload?.message || "Versatel-Session erfolgreich gespeichert." },
+          { type: "", text: "Adresse kann jetzt geprüft werden." }
+        ]);
+      } catch (error) {
+        state.isLoggedIn = false;
+        updateLoginUi();
+
+        setStatus([
+          { type: "err", text: error.message || "Login fehlgeschlagen." }
+        ]);
+      } finally {
+        els.loginBtn.disabled = false;
+        els.loginBtn.textContent = originalButtonText;
+      }
     });
 
     els.logoutBtn.addEventListener("click", () => {
