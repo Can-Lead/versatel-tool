@@ -1333,39 +1333,40 @@
     doc.text(`Sie sparen ${formatEuro(priceSaving)} / Monat`, 140, 108);
   }
 
-  drawRoundedPanel(doc, 14, 122, 182, 26, 8, [248, 251, 255], [219, 227, 237]);
+  drawRoundedPanel(doc, 14, 122, 182, 34, 8, [248, 251, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
   doc.text("Ihre Vorteile", 18, 133);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text("• Planbare monatliche Kosten", 18, 141);
-  doc.text("• Klare Vertragslaufzeit und transparente Einmalkosten", 76, 141);
-  doc.text("• Professionelle Business-Anbindung", 150, 141, { align: "right" });
+  doc.setFontSize(8.5);
+  doc.text("• Planbare monatliche Kosten", 18, 142);
+  doc.text("• Klare Vertragslaufzeit", 104, 142);
+  doc.text("• Transparente Einmalkosten", 18, 149);
+  doc.text("• Professionelle Business-Anbindung", 104, 149);
 
-  drawRoundedPanel(doc, 14, 156, 182, 40, 8, [255, 255, 255], [219, 227, 237]);
+  drawRoundedPanel(doc, 14, 164, 182, 40, 8, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Leistungsübersicht", 18, 168);
+  doc.text("Leistungsübersicht", 18, 176);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  doc.text(`Produkt: ${product?.label || "—"}`, 18, 178);
-  doc.text(`Bandbreite: ${variant?.label || "—"}`, 18, 184);
-  doc.text(`Laufzeit: ${term ? `${term.months} Monate` : "—"}`, 18, 190);
+  doc.text(`Produkt: ${product?.label || "—"}`, 18, 186);
+  doc.text(`Bandbreite: ${variant?.label || "—"}`, 18, 192);
+  doc.text(`Laufzeit: ${term ? `${term.months} Monate` : "—"}`, 18, 198);
 
-  doc.text(`Service Level: ${sla?.label || "—"}`, 108, 178);
-  doc.text(`Voice: ${voice?.label || "Kein Voice-Dienst"}`, 108, 184);
+  doc.text(`Service Level: ${sla?.label || "—"}`, 108, 186);
+  doc.text(`Voice: ${voice?.label || "Kein Voice-Dienst"}`, 108, 192);
 
   if (product?.availability?.note) {
     const availabilityLines = doc.splitTextToSize(`Verfügbarkeit: ${product.availability.note}`, 78);
-    doc.text(availabilityLines, 108, 190);
+    doc.text(availabilityLines, 108, 198);
   }
 
-  drawRoundedPanel(doc, 14, 204, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
+  drawRoundedPanel(doc, 14, 212, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -1376,7 +1377,7 @@
   doc.text(`Anschluss: ${formatEuro(variant?.connectionPrice ?? 0)}`, 18, 228);
   doc.text(`Hardware: ${state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)}`, 18, 234);
 
-  drawRoundedPanel(doc, 108, 204, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
+  drawRoundedPanel(doc, 108, 212, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -1390,17 +1391,17 @@
   const customerAddressLines = doc.splitTextToSize(`Adresse: ${addressLine}`, 170);
   const customerPanelHeight = 34 + ((customerAddressLines.length - 1) * 5);
 
-  drawRoundedPanel(doc, 14, 246, 182, customerPanelHeight, 8, [255, 255, 255], [219, 227, 237]);
+  drawRoundedPanel(doc, 14, 254, 182, customerPanelHeight, 8, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
-  doc.text("Kundendaten", 18, 257);
+  doc.text("Kundendaten", 18, 265);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`Firma: ${data.companyName || "—"}`, 18, 265);
-  doc.text(`Ansprechpartner: ${salutationName}`, 18, 271);
-  doc.text(customerAddressLines, 18, 277);
+  doc.text(`Firma: ${data.companyName || "—"}`, 18, 273);
+  doc.text(`Ansprechpartner: ${salutationName}`, 18, 279);
+  doc.text(customerAddressLines, 18, 285);
 
   doc.setDrawColor(210, 220, 232);
   doc.line(14, 289, 196, 289);
