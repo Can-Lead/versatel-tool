@@ -76,7 +76,20 @@ def versatel_check(payload: VersatelCheckRequest):
 
     try:
         bot.start()
-        bot.ensure_logged_in()
+
+        try:
+            bot.ensure_logged_in()
+        except LoginRequired:
+            login_result = bot.login_with_credentials(
+                username=VERSATEL_USERNAME,
+                password=VERSATEL_PASSWORD,
+                wait_seconds=60,
+            )
+
+            if not login_result or login_result.get("status") != "ok":
+                raise HTTPException(status_code=401, detail="Versatel-Login konnte nicht aufgebaut werden.")
+
+            bot.ensure_logged_in()
 
         row = AddressInput(
             row_index=0,
@@ -99,6 +112,8 @@ def versatel_check(payload: VersatelCheckRequest):
             "source_url": result.source_url,
             "checked_at": result.checked_at,
         }
+    except HTTPException:
+        raise
     except LoginRequired as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
