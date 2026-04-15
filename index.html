@@ -592,8 +592,7 @@
           </div>
 
           <div class="info">
-            In dieser ersten Version ist der Login noch lokal simuliert. Später wird hier dein echtes
-            Backend angebunden.
+            Der Login baut jetzt eine echte Versatel-Session im Backend auf. Danach kann die Adresse direkt geprüft werden.
           </div>
         </div>
 
@@ -1712,35 +1711,18 @@
 }
 
     els.loginBtn.addEventListener("click", async () => {
-      const username = els.loginUsername.value.trim();
-      const password = els.loginPassword.value.trim();
-
-      if (!username || !password) {
-        setStatus([
-          { type: "err", text: "Bitte Benutzername und Passwort eingeben." }
-        ]);
-        return;
-      }
-
       const originalButtonText = els.loginBtn.textContent;
       els.loginBtn.disabled = true;
       els.loginBtn.textContent = "Login läuft ...";
 
       setStatus([
-        { type: "warn", text: "Versatel-Login wird gestartet." },
+        { type: "warn", text: "Versatel-Login wird mit den fest hinterlegten Backend-Zugangsdaten gestartet." },
         { type: "", text: "Bitte warten, bis die Session aufgebaut wurde." }
       ]);
 
       try {
         const response = await fetch("/api/versatel/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            username,
-            password
-          })
+          method: "POST"
         });
 
         const rawText = await response.text();
