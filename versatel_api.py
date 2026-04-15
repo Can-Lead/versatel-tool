@@ -11,8 +11,6 @@ app = FastAPI()
 
 
 class CheckAddressWithLoginRequest(BaseModel):
-    username: str
-    password: str
     street: str
     houseNumber: str
     postalCode: str
@@ -22,18 +20,12 @@ class CheckAddressWithLoginRequest(BaseModel):
 
 @app.post("/api/versatel/check-address-with-login")
 def check_address_with_login(payload: CheckAddressWithLoginRequest):
-    username = (payload.username or "").strip()
-    password = (payload.password or "").strip()
     street = (payload.street or "").strip()
     house_number = (payload.houseNumber or "").strip()
     postal_code = (payload.postalCode or "").strip()
     city = (payload.city or "").strip()
     external_id = (payload.externalId or "").strip()
 
-    if not username:
-        raise HTTPException(status_code=400, detail="Benutzername fehlt.")
-    if not password:
-        raise HTTPException(status_code=400, detail="Passwort fehlt.")
     if not street:
         raise HTTPException(status_code=400, detail="Straße fehlt.")
     if not house_number:
@@ -63,8 +55,6 @@ def check_address_with_login(payload: CheckAddressWithLoginRequest):
 
         result = bot.login_and_check_address(
             row=row,
-            username=username,
-            password=password,
             login_wait_seconds=60,
             post_login_delay_seconds=3.0,
         )
