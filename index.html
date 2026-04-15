@@ -689,12 +689,33 @@
             </div>
 
             <div class="card">
+              <div class="section-title">Rabatte</div>
+
+              <label style="display:flex; align-items:center; gap:10px; margin-top:0; font-size:14px; color:var(--text); font-weight:700;">
+                <input id="autoDiscountCheckbox" type="checkbox" checked style="width:auto; min-height:auto; transform:scale(1.1);" />
+                Rabatt-Automatik aktiv
+              </label>
+
+              <div class="info" style="margin-top:10px;">
+                Bei aktiver Automatik werden alle zur Auswahl passenden Rabatte automatisch angewendet.
+                Wenn du die Automatik deaktivierst, kannst du passende Rabatte manuell auswählen.
+              </div>
+
+              <div class="choice-grid" id="discountChoices" style="margin-top:14px;"></div>
+            </div>
+
+            <div class="card">
               <div class="section-title">Zusammenfassung</div>
               <div class="summary" id="summaryBox"></div>
 
               <label style="display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14px; color:var(--text); font-weight:700;">
                 <input id="waiveHardwareCheckbox" type="checkbox" style="width:auto; min-height:auto; transform:scale(1.1);" />
                 Hardwarepreis erlassen
+              </label>
+
+              <label style="display:flex; align-items:center; gap:10px; margin-top:10px; font-size:14px; color:var(--text); font-weight:700;">
+                <input id="waiveConnectionCheckbox" type="checkbox" style="width:auto; min-height:auto; transform:scale(1.1);" />
+                Anschlussgebühr erlassen
               </label>
 
               <div class="toolbar">
@@ -768,7 +789,10 @@
       selectedSla: "basis",
       selectedVoice: "",
       availabilityStatus: "onnet",
-      waiveHardwarePrice: false
+      waiveHardwarePrice: false,
+      waiveConnectionPrice: false,
+      autoApplyDiscounts: true,
+      selectedDiscountKeys: []
     };
 
     const els = {
@@ -785,6 +809,8 @@
       termChoices: document.getElementById("termChoices"),
       slaChoices: document.getElementById("slaChoices"),
       voiceChoices: document.getElementById("voiceChoices"),
+      discountChoices: document.getElementById("discountChoices"),
+      autoDiscountCheckbox: document.getElementById("autoDiscountCheckbox"),
       summaryBox: document.getElementById("summaryBox"),
       companyName: document.getElementById("companyName"),
       contactEmail: document.getElementById("contactEmail"),
@@ -798,6 +824,7 @@
       checkAddressBtn: document.getElementById("checkAddressBtn"),
       sendOfferBtn: document.getElementById("sendOfferBtn"),
       waiveHardwareCheckbox: document.getElementById("waiveHardwareCheckbox"),
+      waiveConnectionCheckbox: document.getElementById("waiveConnectionCheckbox"),
       priceMonthlyMain: document.getElementById("priceMonthlyMain"),
       pricePreviewProduct: document.getElementById("pricePreviewProduct"),
       priceOldMonthly: document.getElementById("priceOldMonthly"),
@@ -926,6 +953,133 @@
       return state.waiveHardwarePrice ? 0 : Number(variant.hardwarePriceOnce ?? 0);
     }
 
+    function getEffectiveConnectionPrice(variant) {
+      if (!variant) return 0;
+      return state.waiveConnectionPrice ? 0 : Number(variant.connectionPrice ?? 0);
+    }
+
+    function getAvailableDiscounts(product, variant, term) {
+      if (!product || !variant || !term) return [];
+
+      const discounts = Array.isArray(product.discounts) ? product.discounts : [];
+      const applicableKeys = Array.isArray(term.applicableDiscountKeys) ? term.applicableDiscountKeys : [];
+
+      return discounts.filter(discount => {
+        if (!discount || !discount.key) return false;
+        if (applicableKeys.length > 0 && !applicableKeys.includes(discount.key)) return false;
+
+        if (Array.isArray(discount.validVariantKeys) && discount.validVariantKeys.length > 0) {
+          if (!discount.validVariantKeys.includes(variant.key)) return false;
+        }
+
+        if (Array.isArray(discount.validTerms) && discount.validTerms.length > 0) {
+          if (!discount.validTerms.includes(Number(term.months))) return false;
+        }
+
+        if (Array.isArray(discount.validAvailabilityStatuses) && discount.validAvailabilityStatuses.length > 0) {
+          if (!discount.validAvailabilityStatuses.includes(state.availabilityStatus)) return false;
+        }
+
+        return true;
+      });
+    }
+
+    function getActiveDiscounts(product, variant, term) {
+      const availableDiscounts = getAvailableDiscounts(product, variant, term);
+
+      if (state.autoApplyDiscounts) {
+        return availableDiscounts
+          .slice()
+          .sort((a, b) => Number(a.priority ?? 0) - Number(b.priority ?? 0));
+      }
+
+      return availableDiscounts
+        .filter(discount => state.selectedDiscountKeys.includes(discount.key))
+        .sort((a, b) => Number(a.priority ?? 0) - Number(b.priority ?? 0));
+    }
+
+    function applyDiscountToAmount(amount, discount) {
+      const numericAmount = Number(amount ?? 0);
+      if (!discount) return numericAmount;
+
+      if (discount.mode === "waive") {
+        return 0;
+      }
+
+      if (discount.mode === "fixed") {
+        return Math.max(0, numericAmount - Number(discount.value ?? 0));
+      }
+
+      if (discount.mode === "percent") {
+        return Math.max(0, numericAmount - (numericAmount * Number(discount.value ?? 0) / 100));
+      }
+
+      if (discount.mode === "override") {
+        return numericAmount;
+      }
+
+      return numericAmount;
+    }
+
+    function calculatePricing() {
+      const product = getCurrentProduct();
+      const variant = getCurrentVariant();
+      const term = getCurrentTerm();
+      const sla = getCurrentSlaOption();
+      const voice = getCurrentVoiceOption();
+
+      const baseMonthly = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
+      const baseConnection = Number(term?.connectionPrice ?? variant?.connectionPrice ?? 0);
+      const baseHardware = Number(term?.hardwarePriceOnce ?? variant?.hardwarePriceOnce ?? 0);
+      const listMonthly = Number(term?.listMonthlyPrice ?? variant?.pricing?.list?.monthly ?? variant?.oldMonthlyPrice ?? baseMonthly);
+
+      let monthly = baseMonthly;
+      let connection = baseConnection;
+      let hardware = baseHardware;
+
+      const activeDiscounts = getActiveDiscounts(product, variant, term);
+
+      activeDiscounts.forEach(discount => {
+        const targets = Array.isArray(discount.targets) ? discount.targets : [];
+
+        if (targets.includes("monthly")) {
+          monthly = applyDiscountToAmount(monthly, discount);
+        }
+
+        if (targets.includes("connection")) {
+          connection = applyDiscountToAmount(connection, discount);
+        }
+
+        if (targets.includes("hardware")) {
+          hardware = applyDiscountToAmount(hardware, discount);
+        }
+      });
+
+      if (state.waiveConnectionPrice) {
+        connection = 0;
+      }
+
+      if (state.waiveHardwarePrice) {
+        hardware = 0;
+      }
+
+      const monthlySla = Number(sla?.priceMonthly ?? 0);
+      const monthlyVoice = Number(voice?.priceMonthly ?? 0);
+      const monthlyTotal = monthly + monthlySla + monthlyVoice;
+
+      return {
+        monthlyBase: monthly,
+        monthlySla,
+        monthlyVoice,
+        monthlyTotal,
+        connectionPrice: connection,
+        hardwarePrice: hardware,
+        oneTimeTotal: connection + hardware,
+        listMonthlyPrice: listMonthly,
+        activeDiscounts
+      };
+    }
+
     function ensureSelections() {
       const family = getCurrentFamily();
       const productKeys = Object.keys(family.products || {});
@@ -960,6 +1114,10 @@
       if (!voiceKeys.includes(state.selectedVoice)) {
         state.selectedVoice = voiceOptions[0]?.key || "";
       }
+
+      const term = getCurrentTerm();
+      const availableDiscountKeys = getAvailableDiscounts(product, variant, term).map(discount => discount.key);
+      state.selectedDiscountKeys = state.selectedDiscountKeys.filter(key => availableDiscountKeys.includes(key));
     }
 
     function renderFamilies() {
@@ -1069,6 +1227,39 @@
       toggleEmptyState(els.termChoices, (variant?.terms || []).length, "Noch keine Laufzeiten hinterlegt.");
       toggleEmptyState(els.slaChoices, (variant?.slaOptions || []).length, "Noch keine SLA-Optionen hinterlegt.");
       toggleEmptyState(els.voiceChoices, (variant?.voiceOptions || []).length, "Noch keine Voice-Optionen hinterlegt.");
+
+      const term = getCurrentTerm();
+      const availableDiscounts = getAvailableDiscounts(product, variant, term);
+
+      createChoiceButtons(
+        els.discountChoices,
+        availableDiscounts.map(discount => ({
+          value: discount.key,
+          label: discount.internalName
+        })),
+        null,
+        value => {
+          if (state.autoApplyDiscounts) return;
+
+          if (state.selectedDiscountKeys.includes(value)) {
+            state.selectedDiscountKeys = state.selectedDiscountKeys.filter(key => key !== value);
+          } else {
+            state.selectedDiscountKeys = [...state.selectedDiscountKeys, value];
+          }
+
+          renderAll();
+        },
+        () => state.autoApplyDiscounts
+      );
+
+      Array.from(els.discountChoices.querySelectorAll(".choice-card")).forEach(btn => {
+        const discountKey = availableDiscounts.find(discount => discount.internalName === btn.textContent)?.key;
+        if (!state.autoApplyDiscounts && discountKey && state.selectedDiscountKeys.includes(discountKey)) {
+          btn.classList.add("active");
+        }
+      });
+
+      toggleEmptyState(els.discountChoices, availableDiscounts.length, "Für diese Kombination sind keine Rabatte hinterlegt.");
     }
 
     function toggleEmptyState(container, length, text) {
@@ -1098,12 +1289,7 @@
       const sla = getCurrentSlaOption();
       const voice = getCurrentVoiceOption();
       const data = getFormData();
-
-      const hardwarePrice = getEffectiveHardwarePrice(variant);
-      const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
-      const monthlySla = Number(sla?.priceMonthly ?? 0);
-      const monthlyVoice = Number(voice?.priceMonthly ?? 0);
-      const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
+      const pricing = calculatePricing();
 
       const rows = [
         ["Firmenname", data.companyName || "—"],
@@ -1115,13 +1301,18 @@
         ["Vertragslaufzeit", term ? `${term.months} Monate` : "—"],
         ["SLA", sla?.label || "—"],
         ["Voice-Dienst", voice?.label || "—"],
-        ["Monatlicher Preis", formatEuro(monthlyTotal)],
-        ["Anschlusskosten", formatEuro(variant?.connectionPrice ?? 0)],
-        ["Hardware einmalig", state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)]
+        ["Rabattmodus", state.autoApplyDiscounts ? "Automatik" : "Manuell"],
+        ["Monatlicher Preis", formatEuro(pricing.monthlyTotal)],
+        ["Anschlusskosten", state.waiveConnectionPrice ? "erlassen" : formatEuro(pricing.connectionPrice)],
+        ["Hardware einmalig", state.waiveHardwarePrice ? "erlassen" : formatEuro(pricing.hardwarePrice)]
       ];
 
-      if (variant?.oldMonthlyPrice) {
-        rows.splice(10, 0, ["Alter Monatspreis", formatEuro(variant.oldMonthlyPrice)]);
+      if (pricing.listMonthlyPrice > pricing.monthlyBase) {
+        rows.splice(10, 0, ["Alter Monatspreis", formatEuro(pricing.listMonthlyPrice)]);
+      }
+
+      if (pricing.activeDiscounts.length > 0) {
+        rows.push(["Aktive Rabatte", pricing.activeDiscounts.map(discount => discount.internalName).join(", ")]);
       }
 
       if (product?.availability?.note) {
@@ -1136,19 +1327,19 @@
       `).join("");
 
       if (els.priceMonthlyMain) {
-        els.priceMonthlyMain.textContent = formatEuro(monthlyTotal);
+        els.priceMonthlyMain.textContent = formatEuro(pricing.monthlyTotal);
       }
       if (els.pricePreviewProduct) {
         els.pricePreviewProduct.textContent = `${product?.label || "—"} | ${variant?.label || "—"}`;
       }
       if (els.priceOldMonthly) {
-        els.priceOldMonthly.textContent = variant?.oldMonthlyPrice ? formatEuro(variant.oldMonthlyPrice) : "—";
+        els.priceOldMonthly.textContent = pricing.listMonthlyPrice > pricing.monthlyBase ? formatEuro(pricing.listMonthlyPrice) : "—";
       }
       if (els.priceConnection) {
-        els.priceConnection.textContent = formatEuro(variant?.connectionPrice ?? 0);
+        els.priceConnection.textContent = state.waiveConnectionPrice ? "erlassen" : formatEuro(pricing.connectionPrice);
       }
       if (els.priceHardware) {
-        els.priceHardware.textContent = state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice);
+        els.priceHardware.textContent = state.waiveHardwarePrice ? "erlassen" : formatEuro(pricing.hardwarePrice);
       }
       if (els.priceTerm) {
         els.priceTerm.textContent = term ? `${term.months} Monate` : "—";
@@ -1238,11 +1429,13 @@
   const sla = getCurrentSlaOption();
   const voice = getCurrentVoiceOption();
 
-  const hardwarePrice = getEffectiveHardwarePrice(variant);
-  const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
-  const monthlySla = Number(sla?.priceMonthly ?? 0);
-  const monthlyVoice = Number(voice?.priceMonthly ?? 0);
-  const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
+  const pricing = calculatePricing();
+  const hardwarePrice = pricing.hardwarePrice;
+  const connectionPrice = pricing.connectionPrice;
+  const monthlyBase = pricing.monthlyBase;
+  const monthlySla = pricing.monthlySla;
+  const monthlyVoice = pricing.monthlyVoice;
+  const monthlyTotal = pricing.monthlyTotal;
   const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFillColor(250, 252, 255);
@@ -1297,8 +1490,8 @@
 
   const salutationName = [data.firstName, data.lastName].filter(Boolean).join(" ") || "—";
   const addressLine = [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—";
-  const oneTimeTotal = Number(variant?.connectionPrice ?? 0) + hardwarePrice;
-  const priceSaving = variant?.oldMonthlyPrice ? Number(variant.oldMonthlyPrice) - monthlyTotal : 0;
+  const oneTimeTotal = pricing.oneTimeTotal;
+  const priceSaving = pricing.listMonthlyPrice > monthlyBase ? pricing.listMonthlyPrice - monthlyBase : 0;
 
   drawRoundedPanel(doc, 14, 70, 118, 44, 8, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
@@ -1374,7 +1567,7 @@
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  doc.text(`Anschluss: ${formatEuro(variant?.connectionPrice ?? 0)}`, 18, 228);
+  doc.text(`Anschluss: ${state.waiveConnectionPrice ? "erlassen" : formatEuro(connectionPrice)}`, 18, 228);
   doc.text(`Hardware: ${state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)}`, 18, 234);
 
   drawRoundedPanel(doc, 108, 212, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
@@ -1456,6 +1649,20 @@
       });
     }
 
+    if (els.waiveConnectionCheckbox) {
+      els.waiveConnectionCheckbox.addEventListener("change", () => {
+        state.waiveConnectionPrice = els.waiveConnectionCheckbox.checked;
+        renderSummary();
+      });
+    }
+
+    if (els.autoDiscountCheckbox) {
+      els.autoDiscountCheckbox.addEventListener("change", () => {
+        state.autoApplyDiscounts = els.autoDiscountCheckbox.checked;
+        renderAll();
+      });
+    }
+
     els.checkAddressBtn.addEventListener("click", () => {
       if (!validateRequiredFields()) {
         setStatus([
@@ -1486,6 +1693,10 @@
         { type: "", text: "Nächster Schritt: Backend anbinden, um das PDF automatisch per E-Mail zu versenden." }
       ]);
     });
+
+    if (els.autoDiscountCheckbox) {
+      els.autoDiscountCheckbox.checked = state.autoApplyDiscounts;
+    }
 
     ensureSelections();
     renderAll();
