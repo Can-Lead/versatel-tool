@@ -5,14 +5,11 @@ from versatel_availability_ranked import (
     AddressInput,
     LoginRequired,
     VersatelAvailabilityBot,
+    VERSATEL_USERNAME,
+    VERSATEL_PASSWORD,
 )
 
 app = FastAPI()
-
-
-class VersatelLoginRequest(BaseModel):
-    username: str
-    password: str
 
 
 class VersatelCheckRequest(BaseModel):
@@ -24,14 +21,14 @@ class VersatelCheckRequest(BaseModel):
 
 
 @app.post("/api/versatel/login")
-def versatel_login(payload: VersatelLoginRequest):
-    username = (payload.username or "").strip()
-    password = (payload.password or "").strip()
+def versatel_login():
+    username = (VERSATEL_USERNAME or "").strip()
+    password = (VERSATEL_PASSWORD or "").strip()
 
     if not username:
-        raise HTTPException(status_code=400, detail="Benutzername fehlt.")
+        raise HTTPException(status_code=500, detail="VERSATEL_USERNAME fehlt.")
     if not password:
-        raise HTTPException(status_code=400, detail="Passwort fehlt.")
+        raise HTTPException(status_code=500, detail="VERSATEL_PASSWORD fehlt.")
 
     bot = VersatelAvailabilityBot(
         headless=False,
