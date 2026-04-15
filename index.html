@@ -295,6 +295,7 @@
       display: grid;
       gap: 18px;
       align-self: start;
+      max-height: calc(100vh - 40px);
     }
 
     .price-preview {
@@ -689,22 +690,6 @@
             </div>
 
             <div class="card">
-              <div class="section-title">Rabatte</div>
-
-              <label style="display:flex; align-items:center; gap:10px; margin-top:0; font-size:14px; color:var(--text); font-weight:700;">
-                <input id="autoDiscountCheckbox" type="checkbox" checked style="width:auto; min-height:auto; transform:scale(1.1);" />
-                Rabatt-Automatik aktiv
-              </label>
-
-              <div class="info" style="margin-top:10px;">
-                Bei aktiver Automatik werden alle zur Auswahl passenden Rabatte automatisch angewendet.
-                Wenn du die Automatik deaktivierst, kannst du passende Rabatte manuell auswählen.
-              </div>
-
-              <div class="choice-grid" id="discountChoices" style="margin-top:14px;"></div>
-            </div>
-
-            <div class="card">
               <div class="section-title">Zusammenfassung</div>
               <div class="summary" id="summaryBox"></div>
 
@@ -769,6 +754,22 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Rabatte</div>
+
+          <label style="display:flex; align-items:center; gap:10px; margin-top:0; font-size:14px; color:var(--text); font-weight:700;">
+            <input id="autoDiscountCheckbox" type="checkbox" checked style="width:auto; min-height:auto; transform:scale(1.1);" />
+            Rabatt-Automatik aktiv
+          </label>
+
+          <div class="info" style="margin-top:10px;">
+            Die Rabattbox bleibt im rechten Bereich unter der Preisvorschau sichtbar und scrollt mit.
+            Bei aktiver Automatik werden passende Rabattkennzeichen automatisch gesetzt.
+          </div>
+
+          <div class="choice-grid" id="discountChoices" style="margin-top:14px;"></div>
         </div>
       </aside>
     </div>
@@ -998,29 +999,6 @@
         .sort((a, b) => Number(a.priority ?? 0) - Number(b.priority ?? 0));
     }
 
-    function applyDiscountToAmount(amount, discount) {
-      const numericAmount = Number(amount ?? 0);
-      if (!discount) return numericAmount;
-
-      if (discount.mode === "waive") {
-        return 0;
-      }
-
-      if (discount.mode === "fixed") {
-        return Math.max(0, numericAmount - Number(discount.value ?? 0));
-      }
-
-      if (discount.mode === "percent") {
-        return Math.max(0, numericAmount - (numericAmount * Number(discount.value ?? 0) / 100));
-      }
-
-      if (discount.mode === "override") {
-        return numericAmount;
-      }
-
-      return numericAmount;
-    }
-
     function calculatePricing() {
       const product = getCurrentProduct();
       const variant = getCurrentVariant();
@@ -1028,32 +1006,15 @@
       const sla = getCurrentSlaOption();
       const voice = getCurrentVoiceOption();
 
-      const baseMonthly = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
-      const baseConnection = Number(term?.connectionPrice ?? variant?.connectionPrice ?? 0);
-      const baseHardware = Number(term?.hardwarePriceOnce ?? variant?.hardwarePriceOnce ?? 0);
-      const listMonthly = Number(term?.listMonthlyPrice ?? variant?.pricing?.list?.monthly ?? variant?.oldMonthlyPrice ?? baseMonthly);
+      const monthly = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
+      const connectionBase = Number(term?.connectionPrice ?? variant?.connectionPrice ?? 0);
+      const hardwareBase = Number(term?.hardwarePriceOnce ?? variant?.hardwarePriceOnce ?? 0);
+      const listMonthly = Number(term?.listMonthlyPrice ?? variant?.pricing?.list?.monthly ?? variant?.oldMonthlyPrice ?? monthly);
 
-      let monthly = baseMonthly;
-      let connection = baseConnection;
-      let hardware = baseHardware;
+      let connection = connectionBase;
+      let hardware = hardwareBase;
 
       const activeDiscounts = getActiveDiscounts(product, variant, term);
-
-      activeDiscounts.forEach(discount => {
-        const targets = Array.isArray(discount.targets) ? discount.targets : [];
-
-        if (targets.includes("monthly")) {
-          monthly = applyDiscountToAmount(monthly, discount);
-        }
-
-        if (targets.includes("connection")) {
-          connection = applyDiscountToAmount(connection, discount);
-        }
-
-        if (targets.includes("hardware")) {
-          hardware = applyDiscountToAmount(hardware, discount);
-        }
-      });
 
       if (state.waiveConnectionPrice) {
         connection = 0;
@@ -1312,7 +1273,7 @@
       }
 
       if (pricing.activeDiscounts.length > 0) {
-        rows.push(["Aktive Rabatte", pricing.activeDiscounts.map(discount => discount.internalName).join(", ")]);
+        rows.push(["Aktive Rabattlogik", pricing.activeDiscounts.map(discount => discount.internalName).join(", ")]);
       }
 
       if (product?.availability?.note) {
