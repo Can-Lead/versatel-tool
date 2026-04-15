@@ -1338,6 +1338,10 @@
           throw new Error(payload?.detail || payload?.error || `Adressprüfung fehlgeschlagen. HTTP ${response.status}`);
         }
 
+        if (!rawText || !rawText.trim()) {
+          throw new Error("Leere 200-Antwort. /api/versatel/check trifft nicht den aktuellen FastAPI-Response.");
+        }
+
         const matches = Array.isArray(payload?.matches) ? payload.matches : [];
         const resultStatus = String(payload?.status || "").trim();
         const resultError = String(payload?.error || "").trim();
