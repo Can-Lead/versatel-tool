@@ -1258,13 +1258,13 @@
 
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
+  doc.setFontSize(22);
   doc.text("Lösungskonzept", 14, 20);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(12);
   doc.setTextColor(92, 114, 138);
-  doc.text("Individuelle Angebotsübersicht", 14, 27);
+  doc.text("Angebotsübersicht", 14, 27);
 
   doc.setDrawColor(200, 210, 222);
   doc.line(150, 8, 150, 42);
@@ -1301,7 +1301,10 @@
   const addressLine = [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—";
   const oneTimeTotal = Number(variant?.connectionPrice ?? 0) + hardwarePrice;
 
-  drawRoundedPanel(doc, 14, 72, 182, 30, 6, [255, 255, 255], [219, 227, 237]);
+  const customerAddressLines = doc.splitTextToSize(`Adresse: ${addressLine}`, 170);
+  const customerPanelHeight = 38 + ((customerAddressLines.length - 1) * 5);
+
+  drawRoundedPanel(doc, 14, 72, 182, customerPanelHeight, 6, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -1311,57 +1314,63 @@
   doc.setFontSize(9.5);
   doc.text(`Firma: ${data.companyName || "—"}`, 18, 91);
   doc.text(`Ansprechpartner: ${salutationName}`, 18, 97);
-  doc.text(`Adresse: ${addressLine}`, 18, 103);
+  doc.text(customerAddressLines, 18, 103);
 
-  drawRoundedPanel(doc, 14, 112, 182, 44, 6, [255, 255, 255], [219, 227, 237]);
+  const productPanelY = 72 + customerPanelHeight + 10;
+
+  drawRoundedPanel(doc, productPanelY ? 14 : 14, productPanelY, 182, 44, 6, [255, 255, 255], [219, 227, 237]);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Produktübersicht", 18, 123);
+  doc.text("Produktübersicht", 18, productPanelY + 11);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  doc.text(`Produktfamilie: ${family?.label || "—"}`, 18, 132);
-  doc.text(`Produkt: ${product?.label || "—"}`, 18, 138);
-  doc.text(`Bandbreite: ${variant?.label || "—"}`, 18, 144);
-  doc.text(`Vertragslaufzeit: ${term ? `${term.months} Monate` : "—"}`, 18, 150);
+  doc.text(`Produktfamilie: ${family?.label || "—"}`, 18, productPanelY + 20);
+  doc.text(`Produkt: ${product?.label || "—"}`, 18, productPanelY + 26);
+  doc.text(`Bandbreite: ${variant?.label || "—"}`, 18, productPanelY + 32);
+  doc.text(`Vertragslaufzeit: ${term ? `${term.months} Monate` : "—"}`, 18, productPanelY + 38);
 
-  doc.text(`Service Level: ${sla?.label || "—"}`, 108, 132);
-  doc.text(`Voice: ${voice?.label || "Kein Voice-Dienst"}`, 108, 138);
+  doc.text(`Service Level: ${sla?.label || "—"}`, 108, productPanelY + 20);
+  doc.text(`Voice: ${voice?.label || "Kein Voice-Dienst"}`, 108, productPanelY + 26);
 
   if (product?.availability?.note) {
-    doc.text(`Verfügbarkeit: ${product.availability.note}`, 108, 144);
+    doc.text(`Verfügbarkeit: ${product.availability.note}`, 108, productPanelY + 32);
   }
 
-  drawRoundedPanel(doc, 14, 166, 84, 34, 6, [32, 71, 132], [32, 71, 132]);
+  const pricingPanelY = productPanelY + 54;
+
+  drawRoundedPanel(doc, 14, pricingPanelY, 84, 34, 6, [32, 71, 132], [32, 71, 132]);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Monatlicher Preis", 18, 178);
+  doc.text("Monatlicher Preis", 18, pricingPanelY + 12);
   doc.setFontSize(20);
-  doc.text(formatEuro(monthlyTotal), 18, 192);
+  doc.text(formatEuro(monthlyTotal), 18, pricingPanelY + 26);
 
   if (variant?.oldMonthlyPrice) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
-    doc.text(`Statt ${formatEuro(variant.oldMonthlyPrice)}`, 18, 198);
+    doc.text(`Statt ${formatEuro(variant.oldMonthlyPrice)}`, 18, pricingPanelY + 32);
   }
 
-  drawRoundedPanel(doc, 108, 166, 88, 34, 6, [255, 255, 255], [219, 227, 237]);
+  drawRoundedPanel(doc, 108, pricingPanelY, 88, 34, 6, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Einmalige Kosten", 112, 178);
+  doc.text("Einmalige Kosten", 112, pricingPanelY + 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  doc.text(`Anschluss: ${formatEuro(variant?.connectionPrice ?? 0)}`, 112, 190);
-  doc.text(`Hardware: ${state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)}`, 112, 198);
+  doc.text(`Anschluss: ${formatEuro(variant?.connectionPrice ?? 0)}`, 112, pricingPanelY + 24);
+  doc.text(`Hardware: ${state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)}`, 112, pricingPanelY + 32);
 
-  drawRoundedPanel(doc, 14, 210, 182, 44, 6, [255, 255, 255], [219, 227, 237]);
+  const notesPanelY = pricingPanelY + 44;
+
+  drawRoundedPanel(doc, 14, notesPanelY, 182, 44, 6, [255, 255, 255], [219, 227, 237]);
   doc.setTextColor(23, 50, 77);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Hinweise", 18, 221);
+  doc.text("Hinweise", 18, notesPanelY + 11);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -1371,7 +1380,7 @@
     `Monatlicher Gesamtpreis: ${formatEuro(monthlyTotal)}`
   ];
 
-  let infoY = 230;
+  let infoY = notesPanelY + 20;
   infoLines.forEach(line => {
     doc.text(line, 18, infoY);
     infoY += 8;
