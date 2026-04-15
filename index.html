@@ -1335,16 +1335,36 @@
         }
 
         const matches = Array.isArray(payload?.matches) ? payload.matches : [];
+        const resultStatus = String(payload?.status || "").trim();
+        const resultError = String(payload?.error || "").trim();
+        const resultUrl = String(payload?.source_url || "").trim();
+        const resultText = String(payload?.availability_text || "").trim();
+
         renderAvailabilityResults(matches);
 
         if (matches.length > 0) {
           setStatus([
             { type: "ok", text: "Adresse erfolgreich geprüft." },
-            { type: "", text: `Top-Treffer: ${matches.map(item => item.label).join(", ")}` }
+            { type: "", text: `Top-Treffer: ${matches.map(item => item.label).join(", ")}` },
+            { type: "", text: resultStatus ? `Backend-Status: ${resultStatus}` : "Backend-Status: available" }
+          ]);
+        } else if (resultError) {
+          setStatus([
+            { type: "err", text: resultError },
+            { type: "", text: `Backend-Status: ${resultStatus || "unbekannt"}` },
+            { type: "", text: resultUrl ? `URL: ${resultUrl}` : "URL: —" }
+          ]);
+        } else if (resultText) {
+          setStatus([
+            { type: "warn", text: "Keine priorisierten Treffer gefunden." },
+            { type: "", text: `Backend-Status: ${resultStatus || "ok"}` },
+            { type: "", text: resultText.slice(0, 220) }
           ]);
         } else {
           setStatus([
-            { type: "warn", text: "Adressprüfung abgeschlossen, aber keine priorisierten Treffer gefunden." }
+            { type: "warn", text: "Keine priorisierten Treffer gefunden." },
+            { type: "", text: `Backend-Status: ${resultStatus || "unbekannt"}` },
+            { type: "", text: resultUrl ? `URL: ${resultUrl}` : "URL: —" }
           ]);
         }
       } catch (error) {
