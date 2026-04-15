@@ -1319,15 +1319,20 @@
         });
 
         const rawText = await response.text();
+        console.log("[VERSATEL FRONTEND] HTTP-Status:", response.status);
+        console.log("[VERSATEL FRONTEND] Raw Response:", rawText);
+
         let payload = {};
 
         if (rawText && rawText.trim()) {
           try {
             payload = JSON.parse(rawText);
           } catch (parseError) {
-            throw new Error(`Server antwortet nicht als JSON. HTTP ${response.status}`);
+            throw new Error(`Server antwortet nicht als JSON. HTTP ${response.status}. Antwort: ${rawText.slice(0, 500)}`);
           }
         }
+
+        console.log("[VERSATEL FRONTEND] Parsed Payload:", payload);
 
         if (!response.ok) {
           throw new Error(payload?.detail || payload?.error || `Adressprüfung fehlgeschlagen. HTTP ${response.status}`);
@@ -1363,7 +1368,8 @@
           setStatus([
             { type: "warn", text: "Keine priorisierten Treffer gefunden." },
             { type: "", text: `Backend-Status: ${resultStatus || "unbekannt"}` },
-            { type: "", text: resultUrl ? `URL: ${resultUrl}` : "URL: —" }
+            { type: "", text: resultUrl ? `URL: ${resultUrl}` : "URL: —" },
+            { type: "", text: `Raw: ${rawText ? rawText.slice(0, 220) : "leer"}` }
           ]);
         }
       } catch (error) {
