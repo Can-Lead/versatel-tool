@@ -775,6 +775,24 @@
 
           <div class="choice-grid" id="discountChoices" style="margin-top:14px;"></div>
         </div>
+
+        <div class="card">
+          <div class="section-title">Verfügbarkeit</div>
+          <div class="summary" id="availabilityResultsBox">
+            <div class="summary-row">
+              <span>Verfügbarkeit 1</span>
+              <span>—</span>
+            </div>
+            <div class="summary-row">
+              <span>Verfügbarkeit 2</span>
+              <span>—</span>
+            </div>
+            <div class="summary-row">
+              <span>Verfügbarkeit 3</span>
+              <span>—</span>
+            </div>
+          </div>
+        </div>
       </aside>
     </div>
   </div>
@@ -816,6 +834,7 @@
       voiceChoices: document.getElementById("voiceChoices"),
       discountChoices: document.getElementById("discountChoices"),
       autoDiscountCheckbox: document.getElementById("autoDiscountCheckbox"),
+      availabilityResultsBox: document.getElementById("availabilityResultsBox"),
       summaryBox: document.getElementById("summaryBox"),
       companyName: document.getElementById("companyName"),
       contactEmail: document.getElementById("contactEmail"),
@@ -1246,6 +1265,88 @@
       };
     }
 
+    function renderAvailabilityResults(matches = []) {
+      if (!els.availabilityResultsBox) return;
+
+      const rows = [1, 2, 3].map(rank => {
+        const match = Array.isArray(matches) ? matches.find(item => Number(item.rank) === rank) : null;
+        return [
+          `Verfügbarkeit ${rank}`,
+          match?.label || "—"
+        ];
+      });
+
+      els.availabilityResultsBox.innerHTML = rows.map(([left, right]) => `
+        <div class="summary-row">
+          <span>${escapeHtml(left)}</span>
+          <span>${escapeHtml(right)}</span>
+        </div>
+      `).join("");
+    }
+
+    async function checkAddressAvailability() {
+      const data = getFormData();
+
+      if (!validateRequiredFields()) {
+        setStatus([
+          { type: "err", text: "Bitte zuerst alle Pflichtfelder für die Adresse ausfüllen." }
+        ]);
+        return;
+      }
+
+      const originalButtonText = els.checkAddressBtn.textContent;
+      els.checkAddressBtn.disabled = true;
+      els.checkAddressBtn.textContent = "Adresse wird geprüft ...";
+
+      setStatus([
+        { type: "warn", text: "Automatischer Versatel-Login wird gestartet." },
+        { type: "", text: "Danach wird die Adresse automatisch geprüft." }
+      ]);
+
+      try {
+        const response = await fetch("/api/versatel/check-address-with-login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            street: data.street,
+            houseNumber: data.houseNumber,
+            postalCode: data.postalCode,
+            city: data.city
+          })
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload?.detail || payload?.error || "Adressprüfung fehlgeschlagen.");
+        }
+
+        const matches = Array.isArray(payload?.matches) ? payload.matches : [];
+        renderAvailabilityResults(matches);
+
+        if (matches.length > 0) {
+          setStatus([
+            { type: "ok", text: "Adresse erfolgreich geprüft." },
+            { type: "", text: `Top-Treffer: ${matches.map(item => item.label).join(", ")}` }
+          ]);
+        } else {
+          setStatus([
+            { type: "warn", text: "Adressprüfung abgeschlossen, aber keine priorisierten Treffer gefunden." }
+          ]);
+        }
+      } catch (error) {
+        renderAvailabilityResults([]);
+        setStatus([
+          { type: "err", text: error.message || "Adressprüfung fehlgeschlagen." }
+        ]);
+      } finally {
+        els.checkAddressBtn.disabled = false;
+        els.checkAddressBtn.textContent = originalButtonText;
+      }
+    }
+
     function renderSummary() {
       const family = getCurrentFamily();
       const product = getCurrentProduct();
@@ -1629,18 +1730,7 @@
     }
 
     els.checkAddressBtn.addEventListener("click", () => {
-      if (!validateRequiredFields()) {
-        setStatus([
-          { type: "err", text: "Bitte zuerst alle Pflichtfelder für die Adresse ausfüllen." }
-        ]);
-        return;
-      }
-
-      setStatus([
-        { type: "ok", text: "Frontend-Daten sind vollständig." },
-        { type: "", text: "Später wird hier der Versatel-Adresscheck gestartet." },
-        { type: "", text: "Danach kann das Produkt automatisiert gewählt werden." }
-      ]);
+      checkAddressAvailability();
     });
 
     els.sendOfferBtn.addEventListener("click", () => {
@@ -1665,6 +1755,7 @@
 
     ensureSelections();
     renderAll();
+    renderAvailabilityResults([]);
     updateLoginUi();
   </script>
 </body>
