@@ -1246,6 +1246,28 @@ class VersatelAvailabilityBot:
 
         return result
 
+    def login_and_check_address(
+        self,
+        row: AddressInput,
+        username: str,
+        password: str,
+        login_wait_seconds: int = 60,
+        post_login_delay_seconds: float = 3.0,
+    ) -> AvailabilityResult:
+        try:
+            self.ensure_logged_in()
+        except LoginRequired:
+            self.login_with_credentials(
+                username=username,
+                password=password,
+                wait_seconds=login_wait_seconds,
+            )
+            if post_login_delay_seconds > 0:
+                time.sleep(post_login_delay_seconds)
+            self.ensure_logged_in()
+
+        return self.check_address(row)
+
     def check_address(self, row: AddressInput) -> AvailabilityResult:
         raise_if_cancel_requested()
 
@@ -1474,6 +1496,11 @@ def _process_address_chunk_worker(
     state_file: str,
     headless: bool,
     result_callback=None,
+    username: str = "",
+    password: str = "",
+    auto_login: bool = False,
+    login_wait_seconds: int = 60,
+    post_login_delay_seconds: float = 3.0,
 ) -> List[Dict[str, Any]]:
     bot = VersatelAvailabilityBot(
         state_file=state_file,
@@ -1485,14 +1512,31 @@ def _process_address_chunk_worker(
 
     try:
         bot.start()
-        bot.ensure_logged_in()
+
+        if auto_login:
+            if not str(username or "").strip():
+                raise LoginRequired("Automatischer Login angefordert, aber Benutzername fehlt.")
+            if not str(password or "").strip():
+                raise LoginRequired("Automatischer Login angefordert, aber Passwort fehlt.")
+        else:
+            bot.ensure_logged_in()
 
         for row in rows:
             if is_cancel_requested():
                 raise ScrapeCancelled("Abbruch angefordert")
 
             try:
-                result = bot.check_address(row)
+                if auto_login:
+                    result = bot.login_and_check_address(
+                        row=row,
+                        username=username,
+                        password=password,
+                        login_wait_seconds=login_wait_seconds,
+                        post_login_delay_seconds=post_login_delay_seconds,
+                    )
+                else:
+                    result = bot.check_address(row)
+
                 payload = asdict(result)
             except Exception as e:
                 payload = asdict(
@@ -1531,6 +1575,11 @@ def process_address_batch(
     headless: bool = False,
     progress_callback=None,
     max_workers: int = 1,
+    username: str = "",
+    password: str = "",
+    auto_login: bool = False,
+    login_wait_seconds: int = 60,
+    post_login_delay_seconds: float = 3.0,
 ) -> List[Dict[str, Any]]:
     storage = AvailabilityStorage(db_path=db_path)
     total = len(rows)
@@ -1586,6 +1635,11 @@ def process_address_batch(
                 state_file,
                 headless,
                 handle_result,
+                username,
+                password,
+                auto_login,
+                login_wait_seconds,
+                post_login_delay_seconds,
             ): chunk
             for chunk in chunks if chunk
         }
