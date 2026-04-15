@@ -13,16 +13,43 @@ import re
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-from datacentermap_scraper import (
-    request_cancel,
-    reset_cancel,
-    is_cancel_requested,
-    raise_if_cancel_requested,
-    ScrapeCancelled,
-    sleep_with_cancel,
-    clean,
-    safe_text,
-)
+class ScrapeCancelled(Exception):
+    pass
+
+
+_CANCEL_REQUESTED = False
+
+
+def request_cancel():
+    global _CANCEL_REQUESTED
+    _CANCEL_REQUESTED = True
+
+
+def reset_cancel():
+    global _CANCEL_REQUESTED
+    _CANCEL_REQUESTED = False
+
+
+def is_cancel_requested() -> bool:
+    return _CANCEL_REQUESTED
+
+
+def raise_if_cancel_requested():
+    if is_cancel_requested():
+        raise ScrapeCancelled("Abbruch angefordert")
+
+
+def sleep_with_cancel(page, milliseconds: int):
+    raise_if_cancel_requested()
+    time.sleep(max(0, milliseconds) / 1000)
+
+
+def clean(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def safe_text(value: Any) -> str:
+    return clean(value)
 
 BASE_URL = "https://preview.versatel.psp.infrafin.net/map"
 DEFAULT_STATE_FILE = "versatel_state.json"
