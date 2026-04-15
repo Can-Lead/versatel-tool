@@ -458,18 +458,18 @@ window.PRODUCT_CATALOG = {
                   hardware: 149.00
                 },
                 display: {
-                  oldMonthlyPrice: null,
+                  oldMonthlyPrice: 749.00,
                   oldConnectionPrice: 1500.00,
                   oldHardwarePrice: null
                 }
               },
-              monthlyPrice: 749.00,
+              monthlyPrice: 669.00,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
                 {
                   months: 36,
-                  monthlyPrice: 749.00,
+                  monthlyPrice: 669.00,
                   listMonthlyPrice: 749.00,
                   connectionPrice: 1500.00,
                   hardwarePriceOnce: 149.00,
@@ -477,7 +477,7 @@ window.PRODUCT_CATALOG = {
                 },
                 {
                   months: 48,
-                  monthlyPrice: 749.00,
+                  monthlyPrice: 636.65,
                   listMonthlyPrice: 749.00,
                   connectionPrice: 500.00,
                   hardwarePriceOnce: 149.00,
@@ -485,7 +485,7 @@ window.PRODUCT_CATALOG = {
                 },
                 {
                   months: 60,
-                  monthlyPrice: 749.00,
+                  monthlyPrice: 599.20,
                   listMonthlyPrice: 749.00,
                   connectionPrice: 0.00,
                   hardwarePriceOnce: 149.00,
