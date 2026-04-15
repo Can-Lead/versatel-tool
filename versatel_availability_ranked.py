@@ -1,1702 +1,1773 @@
-from __future__ import annotations
-
-import csv
-import json
-import sqlite3
-import time
-from dataclasses import dataclass, asdict, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
-import re
-
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
-
-from datacentermap_scraper import (
-    request_cancel,
-    reset_cancel,
-    is_cancel_requested,
-    raise_if_cancel_requested,
-    ScrapeCancelled,
-    sleep_with_cancel,
-    clean,
-    safe_text,
-)
-
-BASE_URL = "https://preview.versatel.psp.infrafin.net/map"
-DEFAULT_STATE_FILE = "versatel_state.json"
-DEFAULT_DB_FILE = "versatel_availability.sqlite"
-
-HEADLESS = False
-SLOW_MO_MS = 00
-PAGE_TIMEOUT_MS = 15000
-REQUEST_DELAY_MS = 1200
-
-
-class LoginRequired(Exception):
-    pass
-
-
-@dataclass
-class AddressInput:
-    row_index: int
-    original_row: Dict[str, Any]
-    street: str
-    house_number: str
-    postal_code: str
-    city: str
-    external_id: str = ""
-
-
-@dataclass
-class AvailabilityMatch:
-    rank: int
-    type: str
-    label: str
-
-
-@dataclass
-class AvailabilityResult:
-    row_index: int
-    external_id: str
-    street: str
-    house_number: str
-    postal_code: str
-    city: str
-    status: str
-    detail_type: str
-    availability_text: str
-    source_url: str
-    checked_at: str
-    error: str = ""
-    raw_payload: str = ""
-    matches: List[Dict[str, Any]] = field(default_factory=list)
-
-
-class AvailabilityStorage:
-    def __init__(self, db_path: str = DEFAULT_DB_FILE):
-        self.db_path = str(db_path)
-        self._init_db()
-
-    def _connect(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        return conn
-
-    def _init_db(self):
-        with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS availability_results (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    row_index INTEGER,
-                    external_id TEXT,
-                    street TEXT,
-                    house_number TEXT,
-                    postal_code TEXT,
-                    city TEXT,
-                    status TEXT,
-                    detail_type TEXT,
-                    availability_text TEXT,
-                    source_url TEXT,
-                    checked_at TEXT,
-                    error TEXT,
-                    raw_payload TEXT,
-                    matches_json TEXT DEFAULT '[]'
-                )
-                """
-            )
-            conn.commit()
-
-            columns = [row[1] for row in conn.execute("PRAGMA table_info(availability_results)").fetchall()]
-            if "detail_type" not in columns:
-                conn.execute("ALTER TABLE availability_results ADD COLUMN detail_type TEXT DEFAULT ''")
-                conn.commit()
-            if "matches_json" not in columns:
-                conn.execute("ALTER TABLE availability_results ADD COLUMN matches_json TEXT DEFAULT '[]'")
-                conn.commit()
-
-    def save_result(self, result: AvailabilityResult):
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO availability_results (
-                    row_index, external_id, street, house_number, postal_code, city,
-                    status, detail_type, availability_text, source_url, checked_at, error, raw_payload, matches_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    result.row_index,
-                    result.external_id,
-                    result.street,
-                    result.house_number,
-                    result.postal_code,
-                    result.city,
-                    result.status,
-                    result.detail_type,
-                    result.availability_text,
-                    result.source_url,
-                    result.checked_at,
-                    result.error,
-                    result.raw_payload,
-                    json.dumps(result.matches, ensure_ascii=False),
-                ),
-            )
-            conn.commit()
-
-    def export_csv(self, outfile: str):
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT row_index, external_id, street, house_number, postal_code, city,
-                       status, detail_type, availability_text, source_url, checked_at, error, raw_payload, matches_json
-                FROM availability_results
-                ORDER BY id
-                """
-            ).fetchall()
-
-        headers = [
-            "row_index",
-            "external_id",
-            "street",
-            "house_number",
-            "postal_code",
-            "city",
-            "status",
-            "detail_type",
-            "availability_text",
-            "source_url",
-            "checked_at",
-            "error",
-            "raw_payload",
-            "matches_json",
-        ]
-
-        with open(outfile, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f, delimiter=";")
-            writer.writerow(headers)
-            writer.writerows(rows)
-
-
-class VersatelAvailabilityBot:
-    MATCH_PRIORITY = {
-        "onnet": 1,
-        "buildings_passed": 2,
-        "telekom_vorleistung": 3,
-        "nearnet": 4,
-        "offnet": 5,
-        "other": 6,
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CAN Lead | Versatel Angebots-Tool</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-2: #f8fbff;
+      --text: #17324d;
+      --muted: #6f88a3;
+      --border: rgba(23, 50, 77, 0.12);
+      --border-strong: rgba(23, 50, 77, 0.2);
+      --accent: #2d8cff;
+      --accent-2: #11b8c9;
+      --ok: #159b66;
+      --danger: #d84d68;
+      --warning: #c88911;
+      --shadow: 0 12px 30px rgba(18, 44, 71, 0.08);
+      --radius: 18px;
     }
 
-    MATCH_LABELS = {
-        "onnet": "Onnet",
-        "buildings_passed": "Buildings Passed",
-        "telekom_vorleistung": "Telekom Vorleistung",
-        "nearnet": "Nearnet",
-        "offnet": "Offnet",
-        "other": "Sonstiges",
+    * {
+      box-sizing: border-box;
     }
 
-    def __init__(
-        self,
-        state_file: str = DEFAULT_STATE_FILE,
-        headless: bool = HEADLESS,
-        timeout_ms: int = PAGE_TIMEOUT_MS,
-        load_state: bool = True,
-    ):
-        self.state_file = str(state_file)
-        self.headless = headless
-        self.timeout_ms = timeout_ms
-        self.load_state = load_state
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(45,140,255,0.08), transparent 18%),
+        radial-gradient(circle at top right, rgba(17,184,201,0.08), transparent 22%),
+        linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
+      color: var(--text);
+    }
 
-        self.playwright = None
-        self.browser = None
-        self.context = None
-        self.page = None
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
 
-    def start(self):
-        self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(
-            headless=self.headless,
-            slow_mo=SLOW_MO_MS,
-            args=[
-                "--deny-permission-prompts",
-            ],
-        )
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
 
-        state_path = Path(self.state_file).resolve()
-        self.state_file = str(state_path)
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 38px;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      font-weight: 800;
+    }
 
-        context_kwargs = {
-            "ignore_https_errors": True,
-            "locale": "de-DE",
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 760px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(45,140,255,0.08);
+      color: #1f5eaf;
+      border: 1px solid rgba(45,140,255,0.14);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr) 300px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(5px);
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(23,50,77,0.75);
+      position: relative;
+    }
+
+    .section-title::after {
+      content: "";
+      display: block;
+      width: 44px;
+      height: 3px;
+      margin: 9px auto 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      opacity: 0.8;
+    }
+
+    .stepper {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+    }
+
+    .step-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(45,140,255,0.1);
+      color: #1f5eaf;
+      font-weight: 800;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+
+    .step-text strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+
+    .step-text span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0 6px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #f7fbff;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 15px;
+      min-height: 46px;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(45,140,255,0.45);
+      box-shadow: 0 0 0 4px rgba(45,140,255,0.10);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 94px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    button:hover {
+      filter: brightness(1.02);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      filter: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border: none;
+      box-shadow: 0 10px 20px rgba(45,140,255,0.18);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+    }
+
+    .btn-danger {
+      background: rgba(216,77,104,0.08);
+      color: var(--danger);
+      border: 1px solid rgba(216,77,104,0.18);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .toolbar button {
+      width: auto;
+      min-width: 160px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .locked {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .locked::after {
+      content: "Bitte zuerst einloggen";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(246, 250, 255, 0.72);
+      color: #234a75;
+      font-weight: 800;
+      font-size: 16px;
+      backdrop-filter: blur(3px);
+      z-index: 3;
+    }
+
+    .locked .lock-content {
+      pointer-events: none;
+      filter: blur(1px);
+      opacity: 0.62;
+    }
+
+    .panel-stack {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .sticky-side {
+      position: sticky;
+      top: 20px;
+      display: grid;
+      gap: 18px;
+      align-self: start;
+      max-height: calc(100vh - 40px);
+    }
+
+    .price-preview {
+      border: 1px solid rgba(23,50,77,0.10);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f2f8fd 100%);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .price-main {
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid rgba(23,50,77,0.08);
+      padding: 16px;
+    }
+
+    .price-kicker {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .price-big {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .price-sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .price-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .price-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      padding-bottom: 8px;
+    }
+
+    .price-item:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .price-item span:first-child {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .price-item span:last-child {
+      font-size: 14px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .choice-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .left-side .choice-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .choice-card {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 68px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(23,50,77,0.12);
+      background: #fff;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      text-align: left;
+      box-shadow: none;
+    }
+
+    .choice-card.active {
+      border-color: #2a67df;
+      box-shadow: 0 0 0 1px rgba(42,103,223,0.14);
+      background: #ffffff;
+    }
+
+    .choice-card.muted {
+      opacity: 0.48;
+      cursor: not-allowed;
+      background: #f3f5f7;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .summary {
+      border: 1px solid rgba(23,50,77,0.1);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f4f9fd 100%);
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      padding-bottom: 8px;
+    }
+
+    .summary-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .summary-row span:first-child {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .summary-row span:last-child {
+      text-align: right;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .status-box {
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfdff;
+      border: 1px solid rgba(23,50,77,0.08);
+      min-height: 150px;
+    }
+
+    .status-line {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      font-size: 14px;
+    }
+
+    .status-line:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-top: 5px;
+      flex: 0 0 auto;
+      background: #c8d4e2;
+    }
+
+    .dot.ok {
+      background: var(--ok);
+    }
+
+    .dot.warn {
+      background: var(--warning);
+    }
+
+    .dot.err {
+      background: var(--danger);
+    }
+
+    .info {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1080px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .choice-grid,
+      .row,
+      .row-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+
+      .toolbar button {
+        width: 100%;
+      }
+
+      .sticky-side {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>CAN Lead <span style="color:#2d8cff;">Versatel Angebots-Tool</span></h1>
+        <p>
+          Kunden- und Produktdaten zentral erfassen.
+        </p>
+      </div>
+      <div class="badge" id="loginStateBadge">Nicht eingeloggt</div>
+    </div>
+
+    <div class="grid">
+      <aside class="panel-stack left-side">
+        <div class="card">
+          <div class="section-title">Ablauf</div>
+          <div class="stepper">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text">
+                <strong>Einloggen</strong>
+                <span>Zugang zum Tool freischalten.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text">
+                <strong>Kundendaten erfassen</strong>
+                <span>Firma, Ansprechpartner und Adresse eintragen.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text">
+                <strong>Produkt konfigurieren</strong>
+                <span>Produktfamilie, Produkt und Optionen wählen.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-text">
+                <strong>Angebot versenden</strong>
+                <span>Später an den Bot und Mailversand übergeben.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Login</div>
+
+          <label for="loginUsername">Benutzername</label>
+          <input id="loginUsername" type="text" placeholder="Benutzername eingeben" />
+
+          <label for="loginPassword">Passwort</label>
+          <input id="loginPassword" type="password" placeholder="Passwort eingeben" />
+
+          <div class="toolbar">
+            <button id="loginBtn" class="btn-primary" type="button">Einloggen</button>
+            <button id="logoutBtn" class="btn-secondary" type="button" disabled>Abmelden</button>
+          </div>
+
+          <div class="info">
+            In dieser ersten Version ist der Login noch lokal simuliert. Später wird hier dein echtes
+            Backend angebunden.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Vertragslaufzeit</div>
+          <div class="choice-grid" id="termChoices"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Service Level Agreement</div>
+          <div class="choice-grid" id="slaChoices"></div>
+        </div>
+
+        <div class="card hidden">
+          <div class="section-title">Status</div>
+          <div class="status-box" id="statusBox">
+            <div class="status-line">
+              <div class="dot warn"></div>
+              <div>Warte auf Login.</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="panel-stack">
+        <section id="workflowSection" class="locked">
+          <div class="lock-content panel-stack">
+            <div class="card">
+              <div class="section-title">Kundendaten</div>
+
+              <div class="row">
+                <div>
+                  <label for="companyName">Firmenname</label>
+                  <input id="companyName" type="text" placeholder="z. B. Muster GmbH" />
+                </div>
+                <div>
+                  <label for="contactEmail">E-Mail (optional)</label>
+                  <input id="contactEmail" type="email" placeholder="z. B. kontakt@firma.de" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="firstName">Vorname</label>
+                  <input id="firstName" type="text" placeholder="Vorname" />
+                </div>
+                <div>
+                  <label for="lastName">Nachname</label>
+                  <input id="lastName" type="text" placeholder="Nachname" />
+                </div>
+              </div>
+
+              <div class="row-3">
+                <div>
+                  <label for="street">Straße</label>
+                  <input id="street" type="text" placeholder="Straße" />
+                </div>
+                <div>
+                  <label for="houseNumber">Hausnummer</label>
+                  <input id="houseNumber" type="text" placeholder="Nr." />
+                </div>
+                <div>
+                  <label for="postalCode">PLZ</label>
+                  <input id="postalCode" type="text" placeholder="PLZ" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="city">Ort</label>
+                  <input id="city" type="text" placeholder="Ort" />
+                </div>
+                <div>
+                  <label for="internalNote">Interne Notiz (optional)</label>
+                  <input id="internalNote" type="text" placeholder="z. B. Rückruf vereinbart" />
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Produktfamilie</div>
+              <div class="choice-grid" id="familyChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Produkt</div>
+              <div class="choice-grid" id="productChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Bandbreite</div>
+              <div class="choice-grid" id="bandwidthChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Voice-Dienst</div>
+              <div class="choice-grid" id="voiceChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Zusammenfassung</div>
+              <div class="summary" id="summaryBox"></div>
+
+              <label style="display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14px; color:var(--text); font-weight:700;">
+                <input id="waiveHardwareCheckbox" type="checkbox" style="width:auto; min-height:auto; transform:scale(1.1);" />
+                Hardwarepreis erlassen
+              </label>
+
+              <label style="display:flex; align-items:center; gap:10px; margin-top:10px; font-size:14px; color:var(--text); font-weight:700;">
+                <input id="waiveConnectionCheckbox" type="checkbox" style="width:auto; min-height:auto; transform:scale(1.1);" />
+                Anschlussgebühr erlassen
+              </label>
+
+              <div class="toolbar">
+                <button id="checkAddressBtn" type="button" class="btn-secondary">Adresse prüfen</button>
+                <button id="sendOfferBtn" type="button" class="btn-primary">Angebot als PDF erstellen</button>
+              </div>
+
+              <div class="info">
+                Die Buttons lösen in dieser ersten Version noch keine echte Versatel-Automation aus.
+                Sie bereiten bereits die Struktur vor, damit dein Backend später exakt mit diesen Werten arbeiten kann.
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="sticky-side">
+        <div class="card">
+          <div class="section-title">Preisvorschau</div>
+          <div class="price-preview" id="pricePreviewBox">
+            <div class="price-main">
+              <div class="price-kicker">Monatlich</div>
+              <div class="price-big" id="priceMonthlyMain">0,00 €</div>
+              <div class="price-sub" id="pricePreviewProduct">Noch kein Produkt gewählt</div>
+            </div>
+
+            <div class="price-list">
+              <div class="price-item">
+                <span>Alter Monatspreis</span>
+                <span id="priceOldMonthly">—</span>
+              </div>
+              <div class="price-item">
+                <span>Anschlusskosten</span>
+                <span id="priceConnection">0,00 €</span>
+              </div>
+              <div class="price-item">
+                <span>Hardware einmalig</span>
+                <span id="priceHardware">0,00 €</span>
+              </div>
+              <div class="price-item">
+                <span>Laufzeit</span>
+                <span id="priceTerm">—</span>
+              </div>
+              <div class="price-item">
+                <span>SLA</span>
+                <span id="priceSla">—</span>
+              </div>
+              <div class="price-item">
+                <span>Voice</span>
+                <span id="priceVoice">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Rabatte</div>
+
+          <label style="display:flex; align-items:center; gap:10px; margin-top:0; font-size:14px; color:var(--text); font-weight:700;">
+            <input id="autoDiscountCheckbox" type="checkbox" checked style="width:auto; min-height:auto; transform:scale(1.1);" />
+            Rabatt-Automatik aktiv
+          </label>
+
+          <div class="info" style="margin-top:10px;">
+            Die Rabattbox bleibt im rechten Bereich unter der Preisvorschau sichtbar und scrollt mit.
+            Bei aktiver Automatik werden passende Rabattkennzeichen automatisch gesetzt.
+          </div>
+
+          <div class="choice-grid" id="discountChoices" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Verfügbarkeit</div>
+          <div class="summary" id="availabilityResultsBox">
+            <div class="summary-row">
+              <span>Verfügbarkeit 1</span>
+              <span>—</span>
+            </div>
+            <div class="summary-row">
+              <span>Verfügbarkeit 2</span>
+              <span>—</span>
+            </div>
+            <div class="summary-row">
+              <span>Verfügbarkeit 3</span>
+              <span>—</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="product-data.js"></script>
+<script src="partner-logo.js"></script>
+<script>
+    const productConfig = window.PRODUCT_CATALOG.families;
+
+    const state = {
+      isLoggedIn: false,
+      selectedFamily: "internet",
+      selectedProduct: "office_fast_secure",
+      selectedVariant: "150_50",
+      selectedTerm: 24,
+      selectedSla: "basis",
+      selectedVoice: "",
+      availabilityStatus: "onnet",
+      waiveHardwarePrice: false,
+      waiveConnectionPrice: false,
+      autoApplyDiscounts: true,
+      selectedDiscountKeys: []
+    };
+
+    const els = {
+      loginUsername: document.getElementById("loginUsername"),
+      loginPassword: document.getElementById("loginPassword"),
+      loginBtn: document.getElementById("loginBtn"),
+      logoutBtn: document.getElementById("logoutBtn"),
+      loginStateBadge: document.getElementById("loginStateBadge"),
+      workflowSection: document.getElementById("workflowSection"),
+      statusBox: document.getElementById("statusBox"),
+      familyChoices: document.getElementById("familyChoices"),
+      productChoices: document.getElementById("productChoices"),
+      bandwidthChoices: document.getElementById("bandwidthChoices"),
+      termChoices: document.getElementById("termChoices"),
+      slaChoices: document.getElementById("slaChoices"),
+      voiceChoices: document.getElementById("voiceChoices"),
+      discountChoices: document.getElementById("discountChoices"),
+      autoDiscountCheckbox: document.getElementById("autoDiscountCheckbox"),
+      availabilityResultsBox: document.getElementById("availabilityResultsBox"),
+      summaryBox: document.getElementById("summaryBox"),
+      companyName: document.getElementById("companyName"),
+      contactEmail: document.getElementById("contactEmail"),
+      firstName: document.getElementById("firstName"),
+      lastName: document.getElementById("lastName"),
+      street: document.getElementById("street"),
+      houseNumber: document.getElementById("houseNumber"),
+      postalCode: document.getElementById("postalCode"),
+      city: document.getElementById("city"),
+      internalNote: document.getElementById("internalNote"),
+      checkAddressBtn: document.getElementById("checkAddressBtn"),
+      sendOfferBtn: document.getElementById("sendOfferBtn"),
+      waiveHardwareCheckbox: document.getElementById("waiveHardwareCheckbox"),
+      waiveConnectionCheckbox: document.getElementById("waiveConnectionCheckbox"),
+      priceMonthlyMain: document.getElementById("priceMonthlyMain"),
+      pricePreviewProduct: document.getElementById("pricePreviewProduct"),
+      priceOldMonthly: document.getElementById("priceOldMonthly"),
+      priceConnection: document.getElementById("priceConnection"),
+      priceHardware: document.getElementById("priceHardware"),
+      priceTerm: document.getElementById("priceTerm"),
+      priceSla: document.getElementById("priceSla"),
+      priceVoice: document.getElementById("priceVoice")
+    };
+
+    function setStatus(lines) {
+      els.statusBox.innerHTML = lines.map(line => `
+        <div class="status-line">
+          <div class="dot ${line.type || ''}"></div>
+          <div>${escapeHtml(line.text)}</div>
+        </div>
+      `).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function updateLoginUi() {
+      if (state.isLoggedIn) {
+        els.workflowSection.classList.remove("locked");
+        els.loginStateBadge.textContent = "Eingeloggt";
+        els.loginStateBadge.style.background = "rgba(21,155,102,0.10)";
+        els.loginStateBadge.style.color = "#15724c";
+        els.loginStateBadge.style.borderColor = "rgba(21,155,102,0.18)";
+        els.loginBtn.disabled = true;
+        els.logoutBtn.disabled = false;
+
+        setStatus([
+          { type: "ok", text: "Login erfolgreich. Workflow ist freigeschaltet." },
+          { type: "", text: "Kundendaten können jetzt erfasst werden." },
+          { type: "", text: "Produkte können jetzt ausgewählt werden." }
+        ]);
+      } else {
+        els.workflowSection.classList.add("locked");
+        els.loginStateBadge.textContent = "Nicht eingeloggt";
+        els.loginStateBadge.style.background = "rgba(45,140,255,0.08)";
+        els.loginStateBadge.style.color = "#1f5eaf";
+        els.loginStateBadge.style.borderColor = "rgba(45,140,255,0.14)";
+        els.loginBtn.disabled = false;
+        els.logoutBtn.disabled = true;
+
+        setStatus([
+          { type: "warn", text: "Warte auf Login." }
+        ]);
+      }
+    }
+
+    function createChoiceButtons(container, items, selectedValue, onClick, disabledFn = null) {
+      container.innerHTML = "";
+
+      items.forEach(item => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-card";
+        btn.textContent = item.label;
+
+        const isDisabled = disabledFn ? disabledFn(item) : false;
+        if (isDisabled) {
+          btn.classList.add("muted");
+          btn.disabled = true;
         }
 
-        if self.load_state and state_path.exists():
-            context_kwargs["storage_state"] = str(state_path)
-            print(f"[VERSATEL] Lade storage_state aus: {state_path}")
-        else:
-            print(f"[VERSATEL] Kein storage_state geladen: {state_path}")
-
-        self.context = self.browser.new_context(**context_kwargs)
-
-        self.context.add_init_script("""
-            Object.defineProperty(navigator, 'geolocation', {
-                value: {
-                    getCurrentPosition: function(success, error) {
-                        if (error) {
-                            error({
-                                code: 1,
-                                message: 'Geolocation blocked by automation'
-                            });
-                        }
-                    },
-                    watchPosition: function(success, error) {
-                        if (error) {
-                            error({
-                                code: 1,
-                                message: 'Geolocation blocked by automation'
-                            });
-                        }
-                        return 0;
-                    },
-                    clearWatch: function() {}
-                },
-                configurable: true
-            });
-        """)
-
-        self.page = self.context.new_page()
-        self.page.set_default_timeout(self.timeout_ms)
-
-    def stop(self):
-        try:
-            if self.context:
-                self.context.close()
-        except Exception:
-            pass
-
-        try:
-            if self.browser:
-                self.browser.close()
-        except Exception:
-            pass
-
-        try:
-            if self.playwright:
-                self.playwright.stop()
-        except Exception:
-            pass
-
-    def save_state(self):
-        if not self.context:
-            return
-
-        state_path = Path(self.state_file).resolve()
-        state_path.parent.mkdir(parents=True, exist_ok=True)
-        self.context.storage_state(path=str(state_path))
-        self.state_file = str(state_path)
-
-    def open_map(self):
-        raise_if_cancel_requested()
-        self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=self.timeout_ms)
-        sleep_with_cancel(self.page, 600)
-        self._dismiss_location_prompt()
-        sleep_with_cancel(self.page, 200)
-
-    def _has_session_data(self) -> bool:
-        try:
-            cookies = self.context.cookies([BASE_URL]) if self.context else []
-            if cookies:
-                return True
-        except Exception:
-            pass
-
-        try:
-            state = self.context.storage_state() if self.context else {}
-            if state.get("cookies"):
-                return True
-            origins = state.get("origins", [])
-            if origins:
-                return True
-        except Exception:
-            pass
-
-        return False
-
-    def _dismiss_location_prompt(self):
-        if not self.page:
-            return
-
-        try:
-            sleep_with_cancel(self.page, 200)
-        except Exception:
-            pass
-
-    def ensure_logged_in(self):
-        message = (
-            "Keine gültige Versatel-Session gefunden. "
-            "Bitte /api/versatel/login ausführen und im sichtbaren Browser manuell einloggen."
-        )
-
-        if not self.page or self.page.is_closed():
-            raise LoginRequired(message)
-
-        state_path = Path(self.state_file).resolve()
-        if not state_path.exists():
-            raise LoginRequired(f"{message} State-Datei fehlt: {state_path}")
-
-        if not self._has_session_data():
-            raise LoginRequired(f"{message} Es wurden keine Session-Daten geladen.")
-
-        try:
-            self.open_map()
-        except Exception as e:
-            raise LoginRequired(f"{message} Map konnte nicht geöffnet werden: {e}")
-
-        for _ in range(5):
-            try:
-                current_url = (self.page.url or "").lower()
-            except Exception:
-                current_url = ""
-
-            if any(x in current_url for x in ["login", "oauth", "sso", "signin", "auth"]):
-                raise LoginRequired(f"{message} Versatel hat auf die Login-Seite umgeleitet.")
-
-            if self._is_logged_in():
-                return
-
-            sleep_with_cancel(self.page, 1000)
-
-        raise LoginRequired(f"{message} Session-Datei vorhanden, aber UI wurde nicht als eingeloggt erkannt.")
-
-    def login_with_credentials(self, username: str, password: str, wait_seconds: int = 60):
-        if not self.page or self.page.is_closed():
-            raise LoginRequired("Browser-Seite für Versatel-Login ist nicht verfügbar.")
-
-        self.open_map()
-
-        deadline = time.time() + wait_seconds
-        last_error = ""
-
-        user_selectors = [
-            "input[name='username']",
-            "input[type='email']",
-            "input[name='email']",
-            "input[id*='user']",
-            "input[id*='email']",
-            "input[placeholder*='E-Mail']",
-            "input[placeholder*='Benutzer']",
-        ]
-
-        pass_selectors = [
-            "input[name='password']",
-            "input[type='password']",
-            "input[id*='pass']",
-            "input[placeholder*='Passwort']",
-        ]
-
-        submit_selectors = [
-            "button[type='submit']",
-            "input[type='submit']",
-            "button:has-text('Anmelden')",
-            "button:has-text('Login')",
-            "button:has-text('Weiter')",
-        ]
-
-        while time.time() < deadline:
-            raise_if_cancel_requested()
-
-            try:
-                if self._is_logged_in():
-                    self.save_state()
-                    return {
-                        "status": "ok",
-                        "state_file": self.state_file,
-                        "message": f"Versatel-Session erfolgreich gespeichert: {self.state_file}"
-                    }
-            except Exception:
-                pass
-
-            try:
-                user_field = None
-                for selector in user_selectors:
-                    loc = self.page.locator(selector).first
-                    if loc.count() > 0:
-                        user_field = loc
-                        break
-
-                pass_field = None
-                for selector in pass_selectors:
-                    loc = self.page.locator(selector).first
-                    if loc.count() > 0:
-                        pass_field = loc
-                        break
-
-                if user_field and pass_field:
-                    user_field.fill("")
-                    user_field.fill(username)
-                    sleep_with_cancel(self.page, 150)
-
-                    pass_field.fill("")
-                    pass_field.fill(password)
-                    sleep_with_cancel(self.page, 150)
-
-                    clicked = False
-                    for selector in submit_selectors:
-                        btn = self.page.locator(selector).first
-                        if btn.count() > 0:
-                            btn.click(timeout=2000)
-                            clicked = True
-                            break
-
-                    if not clicked:
-                        pass_field.press("Enter")
-
-                    sleep_with_cancel(self.page, 1500)
-
-                    if self._is_logged_in():
-                        self.save_state()
-                        return {
-                            "status": "ok",
-                            "state_file": self.state_file,
-                            "message": f"Versatel-Session erfolgreich gespeichert: {self.state_file}"
-                        }
-            except Exception as e:
-                last_error = str(e)
-
-            sleep_with_cancel(self.page, 1000)
-
-        raise LoginRequired(f"Automatischer Login fehlgeschlagen. Letzter Fehler: {last_error or 'Login-Formular nicht erkannt'}")
-
-    def interactive_login(self, wait_seconds: int = 180):
-        print("[VERSATEL] Bitte jetzt manuell im geöffneten Browser einloggen ...")
-
-        deadline = time.time() + wait_seconds
-        while time.time() < deadline:
-            raise_if_cancel_requested()
-
-            if not self.page:
-                raise ScrapeCancelled("Login abgebrochen: Seite nicht mehr verfügbar")
-
-            try:
-                if self.page.is_closed():
-                    raise ScrapeCancelled("Login abgebrochen: Browser/Fenster wurde geschlossen")
-            except Exception:
-                raise ScrapeCancelled("Login abgebrochen: Browser/Fenster wurde geschlossen")
-
-            try:
-                current_url = self.page.url or ""
-            except Exception:
-                current_url = ""
-
-            print(f"[VERSATEL LOGIN] aktuelle URL: {current_url}")
-
-            try:
-                if self._is_logged_in():
-                    self.save_state()
-                    print(f"[VERSATEL] Session gespeichert in {self.state_file}")
-                    return {
-                        "status": "ok",
-                        "state_file": self.state_file,
-                        "message": f"Versatel-Session erfolgreich gespeichert: {self.state_file}"
-                    }
-            except ScrapeCancelled:
-                raise
-            except Exception as e:
-                print(f"[VERSATEL LOGIN] _is_logged_in Fehler: {e}")
-
-            try:
-                sleep_with_cancel(self.page, 1000)
-            except ScrapeCancelled:
-                raise
-            except Exception:
-                raise ScrapeCancelled("Login abgebrochen: Browser/Fenster wurde geschlossen")
-
-        raise LoginRequired("Login wurde nicht innerhalb des Zeitfensters abgeschlossen.")
-
-    def _is_logged_in(self) -> bool:
-        if not self.page:
-            return False
-
-        try:
-            current_url = (self.page.url or "").lower()
-        except Exception:
-            current_url = ""
-
-        blocked_markers = ["login", "oauth", "sso", "signin", "auth"]
-        if any(marker in current_url for marker in blocked_markers):
-            return False
-
-        if not self._has_session_data():
-            return False
-
-        positive_checks = [
-            lambda: "versatel.psp.infrafin.net/map" in current_url,
-            lambda: self.page.locator("input[placeholder*='Adresse']").count() > 0,
-            lambda: self.page.locator("text=Adresse").count() > 0,
-            lambda: self.page.locator("button:has-text('Verfügbarkeit')").count() > 0,
-        ]
-
-        hits = 0
-        for check in positive_checks:
-            try:
-                if check():
-                    hits += 1
-            except Exception:
-                continue
-
-        return hits >= 1
-
-    def _normalize_street_for_search(self, street: str) -> str:
-        text = clean(street)
-
-        text = re.sub(r"\s+", " ", text)
-        text = re.sub(r"\bstr\.\b", "straße", text, flags=re.IGNORECASE)
-        text = re.sub(r"\bstr\b", "straße", text, flags=re.IGNORECASE)
-
-        text = re.sub(r",?\s*\b(büro|büro-nr\.?|treppenhaus)\b.*$", "", text, flags=re.IGNORECASE)
-        text = re.sub(r"\s*/\s*\d+\s*\.?\s*(og|obergeschoss)\b.*$", "", text, flags=re.IGNORECASE)
-        text = re.sub(r",?\s*\d+\s*\.?\s*(og|obergeschoss)\b.*$", "", text, flags=re.IGNORECASE)
-        text = re.sub(r",?\s*\b\d+\s*\.?\s*etage\b.*$", "", text, flags=re.IGNORECASE)
-
-        text = re.sub(r"(\d)\s+([A-Za-z])\b", r"\1\2", text)
-
-        return clean(text)
-
-    def _normalize_postal_code_for_search(self, postal_code: str) -> str:
-        digits = re.sub(r"\D", "", str(postal_code or ""))
-        if len(digits) == 4:
-            return digits.zfill(5)
-        return digits[:5] if len(digits) >= 5 else digits
-
-    def _normalize_city_for_search(self, city: str) -> str:
-        return clean(re.sub(r"\s+", " ", str(city or "")))
-
-    def _build_search_variants(self, row: AddressInput) -> List[str]:
-        street = self._normalize_street_for_search(row.street)
-        house_number = clean(str(row.house_number or ""))
-        postal_code = self._normalize_postal_code_for_search(row.postal_code)
-        city = self._normalize_city_for_search(row.city)
-
-        left = clean(f"{street} {house_number}")
-        right = clean(f"{postal_code} {city}")
-
-        variants = []
-
-        full_main = clean(f"{left}, {right}")
-        if full_main:
-            variants.append(full_main)
-
-        if street and postal_code and city:
-            variants.append(clean(f"{street}, {postal_code} {city}"))
-
-        if left and city:
-            variants.append(clean(f"{left}, {city}"))
-
-        if street and city:
-            variants.append(clean(f"{street}, {city}"))
-
-        deduped = []
-        seen = set()
-        for item in variants:
-            key = item.lower()
-            if item and key not in seen:
-                deduped.append(item)
-                seen.add(key)
-
-        return deduped
-
-    def _full_address(self, row: AddressInput) -> str:
-        variants = self._build_search_variants(row)
-        return variants[0] if variants else ""
-
-    def _find_address_field(self):
-        candidates = [
-            lambda: self.page.get_by_label("Adresse", exact=False),
-            lambda: self.page.get_by_placeholder("Adresse", exact=False),
-            lambda: self.page.locator("input[placeholder*='Adresse']").first,
-            lambda: self.page.locator("input[type='text']").first,
-        ]
-
-        for factory in candidates:
-            try:
-                locator = factory()
-                locator.wait_for(timeout=1500)
-                return locator
-            except Exception:
-                continue
-        return None
-
-    def _fill_address(self, full_address: str) -> str:
-        field = self._find_address_field()
-        if field is None:
-            try:
-                self.open_map()
-            except Exception:
-                pass
-
-            field = self._find_address_field()
-            if field is None:
-                return "failed"
-
-        try:
-            self._dismiss_location_prompt()
-            sleep_with_cancel(self.page, 120)
-
-            field.click(timeout=2000)
-            try:
-                field.fill("")
-            except Exception:
-                pass
-
-            try:
-                field.press("Control+A")
-                field.press("Delete")
-            except Exception:
-                pass
-
-            field.fill(full_address)
-            sleep_with_cancel(self.page, 350)
-
-            suggestion_selectors = [
-                "[role='listbox'] [role='option']",
-                "[role='option']",
-                ".autocomplete-option",
-                ".suggestion",
-                ".pac-item",
-            ]
-
-            def _popup_with_pruefen_visible() -> bool:
-                selectors = [
-                    "button:has-text('PRÜFEN')",
-                    "button:has-text('Prüfen')",
-                    "[role='button']:has-text('PRÜFEN')",
-                    "[role='button']:has-text('Prüfen')",
-                ]
-
-                for sel in selectors:
-                    try:
-                        loc = self.page.locator(sel)
-                        if loc.count() > 0 and loc.first.is_visible():
-                            return True
-                    except Exception:
-                        continue
-
-                return False
-
-            for selector in suggestion_selectors:
-                try:
-                    loc = self.page.locator(selector)
-                    count = min(loc.count(), 5)
-
-                    for i in range(count):
-                        try:
-                            item = loc.nth(i)
-                            if not item.is_visible():
-                                continue
-
-                            txt = clean(item.inner_text())
-                            if not txt:
-                                continue
-
-                            print(f"[VERSATEL] Autocomplete-Kandidat {i+1}: {txt}")
-
-                            item.click(timeout=1200)
-                            sleep_with_cancel(self.page, 1200)
-
-                            try:
-                                current_value = field.input_value()
-                            except Exception:
-                                current_value = ""
-
-                            print(f"[VERSATEL] Vorschlag per Klick gewählt. Feldwert jetzt: {current_value!r}")
-
-                            if clean(current_value):
-                                return "selected_suggestion"
-
-                            if _popup_with_pruefen_visible():
-                                print("[VERSATEL] Prüf-Popup ist sichtbar -> Auswahl als erfolgreich gewertet.")
-                                return "selected_suggestion"
-                        except Exception:
-                            continue
-                except Exception:
-                    continue
-
-            try:
-                self.page.keyboard.press("ArrowDown")
-                sleep_with_cancel(self.page, 350)
-                self.page.keyboard.press("Enter")
-                sleep_with_cancel(self.page, 1200)
-
-                try:
-                    current_value = field.input_value()
-                except Exception:
-                    current_value = ""
-
-                print(f"[VERSATEL] Ersten Vorschlag per Tastatur gewählt. Feldwert jetzt: {current_value!r}")
-
-                if clean(current_value):
-                    return "selected_suggestion"
-
-                if _popup_with_pruefen_visible():
-                    print("[VERSATEL] Prüf-Popup ist nach Tastaturauswahl sichtbar -> Auswahl als erfolgreich gewertet.")
-                    return "selected_suggestion"
-            except Exception:
-                pass
-
-            try:
-                current_value = field.input_value()
-            except Exception:
-                current_value = ""
-
-            print(f"[VERSATEL] Kein Vorschlag gewählt. Feldwert bleibt: {current_value!r}")
-            if not clean(current_value) and not _popup_with_pruefen_visible():
-                return "failed"
-            return "filled_only"
-        except Exception:
-            return "failed"
-
-    def _trigger_search(self) -> bool:
-        self._dismiss_location_prompt()
-
-        selectors = [
-            "button:has-text('PRÜFEN')",
-            "button:has-text('Prüfen')",
-            "[role='button']:has-text('PRÜFEN')",
-            "[role='button']:has-text('Prüfen')",
-            "button:has-text('Suchen')",
-            "[role='button']:has-text('Suchen')",
-            "button:has-text('Verfügbarkeit prüfen')",
-            "[role='button']:has-text('Verfügbarkeit prüfen')",
-            "button[type='submit']",
-        ]
-
-        end_time = time.time() + 8
-        while time.time() < end_time:
-            for selector in selectors:
-                try:
-                    loc = self.page.locator(selector)
-                    count = min(loc.count(), 5)
-
-                    for i in range(count):
-                        try:
-                            btn = loc.nth(i)
-                            if not btn.is_visible():
-                                continue
-
-                            txt = clean(btn.inner_text())
-                            print(f"[VERSATEL] Prüf-Button Kandidat: selector={selector} text={txt}")
-
-                            try:
-                                if btn.is_disabled():
-                                    continue
-                            except Exception:
-                                pass
-
-                            try:
-                                btn.scroll_into_view_if_needed(timeout=1000)
-                            except Exception:
-                                pass
-
-                            try:
-                                print(f"[VERSATEL] Klicke jetzt auf Prüf-Button: {txt}")
-                                btn.click(timeout=1500)
-                                sleep_with_cancel(self.page, 300)
-                                return True
-                            except Exception:
-                                pass
-
-                            try:
-                                print(f"[VERSATEL] Klicke jetzt per force auf Prüf-Button: {txt}")
-                                btn.click(timeout=1500, force=True)
-                                sleep_with_cancel(self.page, 300)
-                                return True
-                            except Exception:
-                                pass
-
-                            try:
-                                print(f"[VERSATEL] Klicke jetzt per JS auf Prüf-Button: {txt}")
-                                btn.evaluate("(node) => node.click()")
-                                sleep_with_cancel(self.page, 300)
-                                return True
-                            except Exception:
-                                pass
-
-                        except Exception:
-                            continue
-                except Exception:
-                    continue
-
-            sleep_with_cancel(self.page, 100)
-
-        return False
-
-    def _open_availability_result(self) -> bool:
-        search_selectors = [
-            "button:has-text('Verfügbarkeit')",
-            "[role='button']:has-text('Verfügbarkeit')",
-            "a:has-text('Verfügbarkeit')",
-            "[role='tab']:has-text('Verfügbarkeit')",
-            "button:has-text('Verfügbarkeit prüfen')",
-            "[role='button']:has-text('Verfügbarkeit prüfen')",
-            "text=/.*Verfügbarkeit.*/i",
-        ]
-
-        result_indicators = [
-            "text=/.*Telekom.*/i",
-            "text=/.*Vorleistung.*/i",
-            "text=/.*onnet.*/i",
-            "text=/.*on-net.*/i",
-            "text=/.*nearnet.*/i",
-            "text=/.*near-net.*/i",
-            "text=/.*nicht verfügbar.*/i",
-            "text=/.*verfügbar.*/i",
-            "text=/.*Glasfaser.*/i",
-            "text=/.*FTTH.*/i",
-            "text=/.*FTTB.*/i",
-            "text=/.*VDSL.*/i",
-            "text=/.*ADSL.*/i",
-            "text=/.*SDSL.*/i",
-        ]
-
-        end_time = time.time() + 12.0
-
-        while time.time() < end_time:
-            raise_if_cancel_requested()
-
-            for selector in result_indicators:
-                try:
-                    loc = self.page.locator(selector)
-                    if loc.count() > 0 and loc.first.is_visible():
-                        print(f"[VERSATEL] Ergebnis bereits sichtbar: {selector}")
-                        return True
-                except Exception:
-                    continue
-
-            for selector in search_selectors:
-                try:
-                    loc = self.page.locator(selector)
-                    count = min(loc.count(), 8)
-
-                    for i in range(count):
-                        try:
-                            el = loc.nth(i)
-
-                            if not el.is_visible():
-                                continue
-
-                            txt = clean(el.inner_text())
-                            print(f"[VERSATEL] Kandidat gefunden: selector={selector} text={txt}")
-
-                            try:
-                                el.click(timeout=1500)
-                                sleep_with_cancel(self.page, 800)
-                                return True
-                            except Exception:
-                                pass
-
-                            try:
-                                el.click(timeout=1500, force=True)
-                                sleep_with_cancel(self.page, 800)
-                                return True
-                            except Exception:
-                                pass
-
-                            try:
-                                el.evaluate("(node) => node.click()")
-                                sleep_with_cancel(self.page, 800)
-                                return True
-                            except Exception:
-                                pass
-
-                        except Exception:
-                            continue
-                except Exception:
-                    continue
-
-            try:
-                snapshot = self._debug_visible_text_snapshot().lower()
-                if any(x in snapshot for x in [
-                    "telekom",
-                    "vorleistung",
-                    "onnet",
-                    "on-net",
-                    "nearnet",
-                    "near-net",
-                    "nicht verfügbar",
-                    "verfügbar",
-                    "glasfaser",
-                    "ftth",
-                    "fttb",
-                    "vdsl",
-                    "adsl",
-                    "sdsl",
-                ]):
-                    print("[VERSATEL] Ergebnis über Snapshot erkannt, ohne zusätzlichen Klick.")
-                    return True
-            except Exception:
-                pass
-
-            sleep_with_cancel(self.page, 300)
-
-        return False
-
-    def _debug_visible_text_snapshot(self) -> str:
-        try:
-            body = self.page.locator("body").inner_text()
-            lines = [clean(x) for x in str(body).splitlines() if clean(x)]
-            return " | ".join(lines[:80])
-        except Exception:
-            return ""
-
-    def _close_result_panel(self) -> bool:
-        if not self.page:
-            return False
-
-        selectors = [
-            "button[aria-label='Close']",
-            "button[aria-label='Schließen']",
-            ".gm-ui-hover-effect",
-            "[role='dialog'] button",
-            "button:has-text('Schließen')",
-            "text='×'",
-            "text='✕'",
-        ]
-
-        for selector in selectors:
-            try:
-                loc = self.page.locator(selector)
-                count = min(loc.count(), 10)
-
-                for i in range(count):
-                    try:
-                        el = loc.nth(i)
-                        if not el.is_visible():
-                            continue
-
-                        txt = clean(el.inner_text())
-                        aria = (el.get_attribute("aria-label") or "").strip().lower()
-                        cls = (el.get_attribute("class") or "").strip().lower()
-
-                        is_close_candidate = (
-                            txt in ["", "×", "✕"]
-                            or "close" in aria
-                            or "schließen" in aria
-                            or "gm-ui-hover-effect" in cls
-                        )
-
-                        if not is_close_candidate:
-                            continue
-
-                        try:
-                            el.click(timeout=1200)
-                            sleep_with_cancel(self.page, 300)
-                            return True
-                        except Exception:
-                            pass
-
-                        try:
-                            el.click(timeout=1200, force=True)
-                            sleep_with_cancel(self.page, 300)
-                            return True
-                        except Exception:
-                            pass
-
-                        try:
-                            el.evaluate("(node) => node.click()")
-                            sleep_with_cancel(self.page, 300)
-                            return True
-                        except Exception:
-                            pass
-
-                    except Exception:
-                        continue
-            except Exception:
-                continue
-
-        try:
-            self.page.keyboard.press("Escape")
-            sleep_with_cancel(self.page, 300)
-            return True
-        except Exception:
-            return False
-
-    def _looks_like_availability_result(self, text: str) -> bool:
-        low = (text or "").lower()
-
-        if not low.strip():
-            return False
-
-        return any(x in low for x in [
-            "telekom",
-            "vorleistung",
-            "onnet",
-            "on-net",
-            "nearnet",
-            "near-net",
-            "offnet",
-            "off-net",
-            "nicht verfügbar",
-            "verfügbar",
-            "glasfaser",
-            "ftth",
-            "fttb",
-            "business",
-            "anschluss",
-            "bandbreite",
-            "produkt",
-            "building passed",
-            "buildings passed",
-        ])
-
-    def _classify_detail_type(self, availability_text: str, raw_payload_obj: Dict[str, Any]) -> str:
-        low = (availability_text or "").lower()
-
-        payload_text = ""
-        try:
-            payload_text = json.dumps(raw_payload_obj, ensure_ascii=False).lower()
-        except Exception:
-            payload_text = ""
-
-        combined = f"{low} | {payload_text}"
-
-        if any(x in combined for x in ["buildings passed", "building passed", "passed home", "homes passed"]):
-            return "buildings_passed"
-
-        if any(x in combined for x in [
-            "telekom vorleistung",
-            "vorleistung telekom",
-            "telekom-wholesale",
-            "telekom wholesale",
-            "telekom vorleistung: regio",
-            "regio",
-            "bitstrom",
-            "bsa",
-            "layer 2",
-            "l2-bsa",
-        ]):
-            return "telekom_vorleistung"
-
-        if any(x in combined for x in [
-            "onnet",
-            "on-net",
-            "on net",
-            "onnet eigen",
-            "im versatel netz",
-            "eigenes netz",
-            "eigene infrastruktur",
-        ]):
-            return "onnet"
-
-        if any(x in combined for x in [
-            "nearnet",
-            "near-net",
-            "near net",
-            "netznah",
-            "nahe am netz",
-        ]):
-            return "nearnet"
-
-        if any(x in combined for x in ["offnet", "off-net", "off net"]):
-            return "offnet"
-
-        return ""
-
-    def _extract_result_text(self) -> str:
-        selectors = [
-            "[role='dialog']",
-            "[class*='dialog']",
-            "[class*='modal']",
-            "[class*='popover']",
-            "[class*='drawer']",
-            "[class*='sheet']",
-            "[class*='result']",
-            "[class*='availability']",
-            "[class*='detail']",
-            "[data-testid*='availability']",
-            "[data-testid*='result']",
-        ]
-
-        collected = []
-
-        for selector in selectors:
-            try:
-                loc = self.page.locator(selector)
-                count = min(loc.count(), 10)
-
-                for i in range(count):
-                    try:
-                        el = loc.nth(i)
-                        if not el.is_visible():
-                            continue
-
-                        text = clean(el.inner_text())
-                        if not text:
-                            continue
-
-                        if text not in collected:
-                            collected.append(text)
-                    except Exception:
-                        continue
-            except Exception:
-                continue
-
-        if collected:
-            collected = sorted(collected, key=len, reverse=True)
-            return " | ".join(collected[:10])
-
-        try:
-            body_text = self.page.locator("body").inner_text()
-            lines = [clean(line) for line in str(body_text).splitlines() if clean(line)]
-            if lines:
-                return " | ".join(lines[:50])
-        except Exception:
-            pass
-
-        return ""
-
-    def _collect_match_types(self, availability_text: str, raw_payload_obj: Dict[str, Any]) -> List[str]:
-        combined_parts = [availability_text or ""]
-
-        try:
-            combined_parts.append(json.dumps(raw_payload_obj, ensure_ascii=False))
-        except Exception:
-            pass
-
-        combined = " | ".join(combined_parts).lower()
-
-        found: List[str] = []
-
-        def add(match_type: str):
-            if match_type not in found:
-                found.append(match_type)
-
-        if any(x in combined for x in [
-            "onnet",
-            "on-net",
-            "on net",
-            "onnet eigen",
-            "im versatel netz",
-            "eigenes netz",
-            "eigene infrastruktur",
-        ]):
-            add("onnet")
-
-        if any(x in combined for x in [
-            "buildings passed",
-            "building passed",
-            "passed home",
-            "homes passed",
-        ]):
-            add("buildings_passed")
-
-        if any(x in combined for x in [
-            "telekom vorleistung",
-            "vorleistung telekom",
-            "telekom-wholesale",
-            "telekom wholesale",
-            "telekom vorleistung: regio",
-            "regio",
-            "bitstrom",
-            "bsa",
-            "layer 2",
-            "l2-bsa",
-        ]):
-            add("telekom_vorleistung")
-
-        if any(x in combined for x in [
-            "nearnet",
-            "near-net",
-            "near net",
-            "netznah",
-            "nahe am netz",
-        ]):
-            add("nearnet")
-
-        if any(x in combined for x in [
-            "offnet",
-            "off-net",
-            "off net",
-        ]):
-            add("offnet")
-
-        if not found and clean(combined):
-            add("other")
-
-        return found
-
-    def _build_ranked_matches(self, availability_text: str, raw_payload_obj: Dict[str, Any]) -> List[Dict[str, Any]]:
-        match_types = self._collect_match_types(availability_text, raw_payload_obj)
-
-        sorted_types = sorted(
-            match_types,
-            key=lambda item: self.MATCH_PRIORITY.get(item, self.MATCH_PRIORITY["other"])
-        )
-
-        result: List[Dict[str, Any]] = []
-        for idx, match_type in enumerate(sorted_types[:3], start=1):
-            result.append({
-                "rank": idx,
-                "type": match_type,
-                "label": self.MATCH_LABELS.get(match_type, self.MATCH_LABELS["other"]),
-            })
-
-        return result
-
-    def login_and_check_address(
-        self,
-        row: AddressInput,
-        username: str,
-        password: str,
-        login_wait_seconds: int = 60,
-        post_login_delay_seconds: float = 3.0,
-    ) -> AvailabilityResult:
-        try:
-            self.ensure_logged_in()
-        except LoginRequired:
-            self.login_with_credentials(
-                username=username,
-                password=password,
-                wait_seconds=login_wait_seconds,
-            )
-            if post_login_delay_seconds > 0:
-                time.sleep(post_login_delay_seconds)
-            self.ensure_logged_in()
-
-        return self.check_address(row)
-
-    def check_address(self, row: AddressInput) -> AvailabilityResult:
-        raise_if_cancel_requested()
-
-        try:
-            self._close_result_panel()
-        except Exception:
-            pass
-
-        captured_json: List[Dict[str, Any]] = []
-
-        def handle_response(response):
-            try:
-                content_type = (response.headers.get("content-type") or "").lower()
-                if "application/json" not in content_type:
-                    return
-
-                url = (response.url or "").lower()
-                if not any(key in url for key in ["address", "search", "availability", "coverage", "map"]):
-                    return
-
-                payload = response.json()
-                captured_json.append({
-                    "url": response.url,
-                    "status": response.status,
-                    "payload": payload,
-                })
-            except Exception:
-                pass
-
-        self.page.on("response", handle_response)
-
-        try:
-            full_address = self._full_address(row)
-            print(f"[VERSATEL] Adresse: {full_address}")
-
-            fill_result = self._fill_address(full_address)
-            print(f"[VERSATEL] fill_result={fill_result}")
-
-            if fill_result not in ["selected_suggestion", "filled_only"]:
-                return AvailabilityResult(
-                    row_index=row.row_index,
-                    external_id=row.external_id,
-                    street=row.street,
-                    house_number=row.house_number,
-                    postal_code=row.postal_code,
-                    city=row.city,
-                    status="ui_changed",
-                    detail_type="",
-                    availability_text="",
-                    source_url=self.page.url,
-                    checked_at=time.strftime("%Y-%m-%d %H:%M:%S"),
-                    error="Adresse konnte nicht sicher übernommen werden",
-                    raw_payload="",
-                    matches=[],
-                )
-
-            print("[VERSATEL] Adressvorschlag gewählt, warte auf Button 'Prüfen' ...")
-            sleep_with_cancel(self.page, 300)
-
-            try:
-                field = self._find_address_field()
-                current_value = field.input_value() if field else ""
-            except Exception:
-                current_value = ""
-
-            print(f"[VERSATEL] Feldwert vor _trigger_search: {current_value!r}")
-            print("[VERSATEL] Starte _trigger_search unabhängig vom Feldwert ...")
-
-            if not self._trigger_search():
-                return AvailabilityResult(
-                    row_index=row.row_index,
-                    external_id=row.external_id,
-                    street=row.street,
-                    house_number=row.house_number,
-                    postal_code=row.postal_code,
-                    city=row.city,
-                    status="ui_changed",
-                    detail_type="",
-                    availability_text="",
-                    source_url=self.page.url,
-                    checked_at=time.strftime("%Y-%m-%d %H:%M:%S"),
-                    error="Button 'Prüfen' konnte nicht ausgelöst werden",
-                    raw_payload="",
-                    matches=[],
-                )
-
-            sleep_with_cancel(self.page, REQUEST_DELAY_MS)
-
-            result_wait_end = time.time() + 15.0
-            availability_text = ""
-            debug_snapshot = ""
-
-            while time.time() < result_wait_end:
-                raise_if_cancel_requested()
-
-                candidate_text = self._extract_result_text()
-                if self._looks_like_availability_result(candidate_text):
-                    availability_text = candidate_text[:4000]
-                    break
-
-                debug_snapshot = self._debug_visible_text_snapshot()
-                if self._looks_like_availability_result(debug_snapshot):
-                    availability_text = debug_snapshot[:4000]
-                    break
-
-                sleep_with_cancel(self.page, 400)
-
-            if not availability_text:
-                availability_opened = self._open_availability_result()
-
-                if availability_opened:
-                    second_wait_end = time.time() + 8.0
-                    while time.time() < second_wait_end:
-                        raise_if_cancel_requested()
-
-                        candidate_text = self._extract_result_text()
-                        if self._looks_like_availability_result(candidate_text):
-                            availability_text = candidate_text[:4000]
-                            break
-
-                        debug_snapshot = self._debug_visible_text_snapshot()
-                        if self._looks_like_availability_result(debug_snapshot):
-                            availability_text = debug_snapshot[:4000]
-                            break
-
-                        sleep_with_cancel(self.page, 400)
-
-            if not availability_text:
-                debug_snapshot = self._debug_visible_text_snapshot()
-                print("[VERSATEL] Kein Ergebnistext erkannt.")
-                print("[VERSATEL] URL:", self.page.url)
-                print("[VERSATEL] Sichtbarer Inhalt:", debug_snapshot[:1500] if debug_snapshot else "<leer>")
-
-            raw_payload_obj = {
-                "page_url": self.page.url,
-                "captured_json": captured_json[-1] if captured_json else None,
-            }
-
-            if not availability_text:
-                debug_snapshot = self._debug_visible_text_snapshot()
-                raw_payload_obj["debug_snapshot"] = debug_snapshot
-                if debug_snapshot:
-                    availability_text = debug_snapshot[:4000]
-
-            raw_payload = json.dumps(raw_payload_obj, ensure_ascii=False)
-
-            low = (availability_text or "").lower()
-            detail_type = self._classify_detail_type(availability_text, raw_payload_obj)
-            matches = self._build_ranked_matches(availability_text, raw_payload_obj)
-
-            if not availability_text:
-                status = "no_result"
-            elif detail_type in ["buildings_passed", "telekom_vorleistung", "onnet", "nearnet", "offnet"]:
-                status = "available"
-            elif "nicht verfügbar" in low:
-                status = "not_available"
-            elif (
-                "verfügbar" in low
-                or "ftth" in low
-                or "fttb" in low
-                or "glasfaser" in low
-            ):
-                status = "available"
-            else:
-                status = "ok"
-
-            print("[VERSATEL] Adresse:", full_address)
-            print("[VERSATEL] URL nach Klick:", self.page.url)
-            print("[VERSATEL] Ergebnistext:", availability_text[:1000] if availability_text else "<leer>")
-            print("[VERSATEL] Matches:", matches)
-
-            panel_closed = self._close_result_panel()
-            if not panel_closed:
-                try:
-                    print("[VERSATEL] Ergebnisfenster konnte nicht sauber geschlossen werden, öffne Map neu.")
-                    self.open_map()
-                except Exception as e:
-                    print(f"[VERSATEL] Map-Neuaufbau nach Ergebnis fehlgeschlagen: {e}")
-
-            return AvailabilityResult(
-                row_index=row.row_index,
-                external_id=row.external_id,
-                street=row.street,
-                house_number=row.house_number,
-                postal_code=row.postal_code,
-                city=row.city,
-                status=status,
-                detail_type=detail_type,
-                availability_text=availability_text,
-                source_url=self.page.url,
-                checked_at=time.strftime("%Y-%m-%d %H:%M:%S"),
-                error="",
-                raw_payload=raw_payload,
-                matches=matches,
-            )
-
-        except PlaywrightTimeoutError as e:
-            return AvailabilityResult(
-                row_index=row.row_index,
-                external_id=row.external_id,
-                street=row.street,
-                house_number=row.house_number,
-                postal_code=row.postal_code,
-                city=row.city,
-                status="timeout",
-                detail_type="",
-                availability_text="",
-                source_url=self.page.url if self.page else BASE_URL,
-                checked_at=time.strftime("%Y-%m-%d %H:%M:%S"),
-                error=str(e),
-                raw_payload="",
-                matches=[],
-            )
-        finally:
-            try:
-                self.page.remove_listener("response", handle_response)
-            except Exception:
-                try:
-                    self.page.off("response", handle_response)
-                except Exception:
-                    pass
-
-
-def _process_address_chunk_worker(
-    rows: List[AddressInput],
-    state_file: str,
-    headless: bool,
-    result_callback=None,
-    username: str = "",
-    password: str = "",
-    auto_login: bool = False,
-    login_wait_seconds: int = 60,
-    post_login_delay_seconds: float = 3.0,
-) -> List[Dict[str, Any]]:
-    bot = VersatelAvailabilityBot(
-        state_file=state_file,
-        headless=headless,
-        timeout_ms=PAGE_TIMEOUT_MS,
-    )
-
-    payloads: List[Dict[str, Any]] = []
-
-    try:
-        bot.start()
-
-        if auto_login:
-            if not str(username or "").strip():
-                raise LoginRequired("Automatischer Login angefordert, aber Benutzername fehlt.")
-            if not str(password or "").strip():
-                raise LoginRequired("Automatischer Login angefordert, aber Passwort fehlt.")
-        else:
-            bot.ensure_logged_in()
-
-        for row in rows:
-            if is_cancel_requested():
-                raise ScrapeCancelled("Abbruch angefordert")
-
-            try:
-                if auto_login:
-                    result = bot.login_and_check_address(
-                        row=row,
-                        username=username,
-                        password=password,
-                        login_wait_seconds=login_wait_seconds,
-                        post_login_delay_seconds=post_login_delay_seconds,
-                    )
-                else:
-                    result = bot.check_address(row)
-
-                payload = asdict(result)
-            except Exception as e:
-                payload = asdict(
-                    AvailabilityResult(
-                        row_index=row.row_index,
-                        external_id=row.external_id,
-                        street=row.street,
-                        house_number=row.house_number,
-                        postal_code=row.postal_code,
-                        city=row.city,
-                        status="error",
-                        detail_type="",
-                        availability_text="",
-                        source_url=bot.page.url if bot.page else BASE_URL,
-                        checked_at=time.strftime("%Y-%m-%d %H:%M:%S"),
-                        error=str(e),
-                        raw_payload="",
-                        matches=[],
-                    )
-                )
-
-            payloads.append(payload)
-
-            if result_callback:
-                result_callback(payload)
-
-        return payloads
-    finally:
-        bot.stop()
-
-
-def process_address_batch(
-    rows: List[AddressInput],
-    state_file: str = DEFAULT_STATE_FILE,
-    db_path: str = DEFAULT_DB_FILE,
-    headless: bool = False,
-    progress_callback=None,
-    max_workers: int = 1,
-    username: str = "",
-    password: str = "",
-    auto_login: bool = False,
-    login_wait_seconds: int = 60,
-    post_login_delay_seconds: float = 3.0,
-) -> List[Dict[str, Any]]:
-    storage = AvailabilityStorage(db_path=db_path)
-    total = len(rows)
-
-    if total == 0:
-        return []
-
-    max_workers = max(1, min(max_workers, total))
-    results: List[Dict[str, Any]] = []
-    results_lock = threading.Lock()
-    completed = 0
-
-    def handle_result(payload: Dict[str, Any]):
-        nonlocal completed
-
-        result_obj = AvailabilityResult(
-            row_index=payload.get("row_index", -1),
-            external_id=payload.get("external_id", ""),
-            street=payload.get("street", ""),
-            house_number=payload.get("house_number", ""),
-            postal_code=payload.get("postal_code", ""),
-            city=payload.get("city", ""),
-            status=payload.get("status", ""),
-            detail_type=payload.get("detail_type", ""),
-            availability_text=payload.get("availability_text", ""),
-            source_url=payload.get("source_url", ""),
-            checked_at=payload.get("checked_at", ""),
-            error=payload.get("error", ""),
-            raw_payload=payload.get("raw_payload", ""),
-            matches=payload.get("matches", []) or [],
-        )
-
-        with results_lock:
-            storage.save_result(result_obj)
-            results.append(payload)
-            completed += 1
-            current_completed = completed
-
-        if progress_callback:
-            progress_callback(current_completed, total, payload)
-
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    future_map = {}
-    cancelled = False
-
-    chunks: List[List[AddressInput]] = [rows[i::max_workers] for i in range(max_workers)]
-
-    try:
-        future_map = {
-            executor.submit(
-                _process_address_chunk_worker,
-                chunk,
-                state_file,
-                headless,
-                handle_result,
-                username,
-                password,
-                auto_login,
-                login_wait_seconds,
-                post_login_delay_seconds,
-            ): chunk
-            for chunk in chunks if chunk
+        if (item.value === selectedValue) {
+          btn.classList.add("active");
         }
 
-        for future in as_completed(future_map):
-            if is_cancel_requested():
-                cancelled = True
-                break
+        btn.addEventListener("click", () => {
+          if (isDisabled) return;
+          onClick(item.value);
+        });
 
-            chunk = future_map[future]
+        container.appendChild(btn);
+      });
+    }
 
-            try:
-                payloads = future.result()
-            except ScrapeCancelled:
-                cancelled = True
-                break
-            except LoginRequired:
-                raise
-            except Exception as e:
-                payloads = [
-                    asdict(
-                        AvailabilityResult(
-                            row_index=row.row_index,
-                            external_id=row.external_id,
-                            street=row.street,
-                            house_number=row.house_number,
-                            postal_code=row.postal_code,
-                            city=row.city,
-                            status="error",
-                            detail_type="",
-                            availability_text="",
-                            source_url=BASE_URL,
-                            checked_at=time.strftime("%Y-%m-%d %H:%M:%S"),
-                            error=str(e),
-                            raw_payload="",
-                            matches=[],
-                        )
-                    )
-                    for row in chunk
-                ]
+    function getCurrentFamily() {
+      return productConfig[state.selectedFamily];
+    }
 
-                for payload in payloads:
-                    handle_result(payload)
+    function getCurrentProduct() {
+      const family = getCurrentFamily();
+      return family?.products?.[state.selectedProduct] || null;
+    }
 
-        if cancelled or is_cancel_requested():
-            for future in future_map:
-                try:
-                    future.cancel()
-                except Exception:
-                    pass
-            executor.shutdown(wait=False, cancel_futures=True)
-            raise ScrapeCancelled("Abbruch angefordert")
-    finally:
-        try:
-            executor.shutdown(wait=False, cancel_futures=True)
-        except TypeError:
-            executor.shutdown(wait=False)
+    function getCurrentVariant() {
+      const product = getCurrentProduct();
+      return (product?.variants || []).find(v => v.key === state.selectedVariant) || null;
+    }
 
-    results.sort(key=lambda x: int(x.get("row_index", 0)))
-    return results
+    function getCurrentTerm() {
+      const variant = getCurrentVariant();
+      return (variant?.terms || []).find(t => Number(t.months) === Number(state.selectedTerm)) || null;
+    }
+
+    function getCurrentSlaOption() {
+      const variant = getCurrentVariant();
+      return (variant?.slaOptions || []).find(s => s.key === state.selectedSla) || null;
+    }
+
+    function getCurrentVoiceOption() {
+      const variant = getCurrentVariant();
+      return (variant?.voiceOptions || []).find(v => v.key === state.selectedVoice) || null;
+    }
+
+    function formatEuro(value) {
+      const number = Number(value || 0);
+      return number.toLocaleString("de-DE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + " €";
+    }
+
+    function getEffectiveHardwarePrice(variant) {
+      if (!variant) return 0;
+      return state.waiveHardwarePrice ? 0 : Number(variant.hardwarePriceOnce ?? 0);
+    }
+
+    function getEffectiveConnectionPrice(variant) {
+      if (!variant) return 0;
+      return state.waiveConnectionPrice ? 0 : Number(variant.connectionPrice ?? 0);
+    }
+
+    function getAvailableDiscounts(product, variant, term) {
+      if (!product || !variant || !term) return [];
+
+      const discounts = Array.isArray(product.discounts) ? product.discounts : [];
+      const applicableKeys = Array.isArray(term.applicableDiscountKeys) ? term.applicableDiscountKeys : [];
+
+      return discounts.filter(discount => {
+        if (!discount || !discount.key) return false;
+        if (applicableKeys.length > 0 && !applicableKeys.includes(discount.key)) return false;
+
+        if (Array.isArray(discount.validVariantKeys) && discount.validVariantKeys.length > 0) {
+          if (!discount.validVariantKeys.includes(variant.key)) return false;
+        }
+
+        if (Array.isArray(discount.validTerms) && discount.validTerms.length > 0) {
+          if (!discount.validTerms.includes(Number(term.months))) return false;
+        }
+
+        if (Array.isArray(discount.validAvailabilityStatuses) && discount.validAvailabilityStatuses.length > 0) {
+          if (!discount.validAvailabilityStatuses.includes(state.availabilityStatus)) return false;
+        }
+
+        return true;
+      });
+    }
+
+    function getActiveDiscounts(product, variant, term) {
+      const availableDiscounts = getAvailableDiscounts(product, variant, term);
+
+      if (state.autoApplyDiscounts) {
+        return availableDiscounts
+          .slice()
+          .sort((a, b) => Number(a.priority ?? 0) - Number(b.priority ?? 0));
+      }
+
+      return availableDiscounts
+        .filter(discount => state.selectedDiscountKeys.includes(discount.key))
+        .sort((a, b) => Number(a.priority ?? 0) - Number(b.priority ?? 0));
+    }
+
+    function calculatePricing() {
+      const product = getCurrentProduct();
+      const variant = getCurrentVariant();
+      const term = getCurrentTerm();
+      const sla = getCurrentSlaOption();
+      const voice = getCurrentVoiceOption();
+
+      const monthly = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
+      const connectionBase = Number(term?.connectionPrice ?? variant?.connectionPrice ?? 0);
+      const hardwareBase = Number(term?.hardwarePriceOnce ?? variant?.hardwarePriceOnce ?? 0);
+      const listMonthly = Number(term?.listMonthlyPrice ?? variant?.pricing?.list?.monthly ?? variant?.oldMonthlyPrice ?? monthly);
+
+      let connection = connectionBase;
+      let hardware = hardwareBase;
+
+      const activeDiscounts = getActiveDiscounts(product, variant, term);
+
+      if (state.waiveConnectionPrice) {
+        connection = 0;
+      }
+
+      if (state.waiveHardwarePrice) {
+        hardware = 0;
+      }
+
+      const monthlySla = Number(sla?.priceMonthly ?? 0);
+      const monthlyVoice = Number(voice?.priceMonthly ?? 0);
+      const monthlyTotal = monthly + monthlySla + monthlyVoice;
+
+      return {
+        monthlyBase: monthly,
+        monthlySla,
+        monthlyVoice,
+        monthlyTotal,
+        connectionPrice: connection,
+        hardwarePrice: hardware,
+        oneTimeTotal: connection + hardware,
+        listMonthlyPrice: listMonthly,
+        activeDiscounts
+      };
+    }
+
+    function ensureSelections() {
+      const family = getCurrentFamily();
+      const productKeys = Object.keys(family.products || {});
+      if (!productKeys.includes(state.selectedProduct)) {
+        state.selectedProduct = productKeys[0] || "";
+      }
+
+      const product = getCurrentProduct();
+      const variants = product?.variants || [];
+      const variantKeys = variants.map(v => v.key);
+
+      if (!variantKeys.includes(state.selectedVariant)) {
+        state.selectedVariant = variants[0]?.key || "";
+      }
+
+      const variant = getCurrentVariant();
+
+      const terms = variant?.terms || [];
+      const termValues = terms.map(t => Number(t.months));
+      if (!termValues.includes(Number(state.selectedTerm))) {
+        state.selectedTerm = terms[0]?.months || "";
+      }
+
+      const slaOptions = (variant?.slaOptions || []).filter(s => s.available);
+      const slaKeys = slaOptions.map(s => s.key);
+      if (!slaKeys.includes(state.selectedSla)) {
+        state.selectedSla = slaOptions[0]?.key || "";
+      }
+
+      const voiceOptions = (variant?.voiceOptions || []).filter(v => v.available);
+      const voiceKeys = voiceOptions.map(v => v.key);
+      if (!voiceKeys.includes(state.selectedVoice)) {
+        state.selectedVoice = voiceOptions[0]?.key || "";
+      }
+
+      const term = getCurrentTerm();
+      const availableDiscountKeys = getAvailableDiscounts(product, variant, term).map(discount => discount.key);
+      state.selectedDiscountKeys = state.selectedDiscountKeys.filter(key => availableDiscountKeys.includes(key));
+    }
+
+    function renderFamilies() {
+      const items = Object.entries(productConfig).map(([key, value]) => ({
+        value: key,
+        label: value.label
+      }));
+
+      createChoiceButtons(
+        els.familyChoices,
+        items,
+        state.selectedFamily,
+        value => {
+          state.selectedFamily = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+    }
+
+    function renderProducts() {
+      const family = getCurrentFamily();
+      const items = Object.entries(family.products || {}).map(([key, value]) => ({
+        value: key,
+        label: value.label
+      }));
+
+      createChoiceButtons(
+        els.productChoices,
+        items,
+        state.selectedProduct,
+        value => {
+          state.selectedProduct = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+    }
+
+    function renderOptions() {
+      const product = getCurrentProduct();
+      const variants = product?.variants || [];
+      const variant = getCurrentVariant();
+
+      createChoiceButtons(
+        els.bandwidthChoices,
+        variants.map(v => ({
+          value: v.key,
+          label: v.label
+        })),
+        state.selectedVariant,
+        value => {
+          state.selectedVariant = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+
+      createChoiceButtons(
+        els.termChoices,
+        (variant?.terms || []).map(v => ({
+          value: Number(v.months),
+          label: `${v.months} Monate`
+        })),
+        Number(state.selectedTerm),
+        value => {
+          state.selectedTerm = Number(value);
+          renderAll();
+        }
+      );
+
+      createChoiceButtons(
+        els.slaChoices,
+        (variant?.slaOptions || []).map(v => ({
+          value: v.key,
+          label: v.label
+        })),
+        state.selectedSla,
+        value => {
+          state.selectedSla = value;
+          renderAll();
+        },
+        item => {
+          const option = (variant?.slaOptions || []).find(v => v.key === item.value);
+          return !option?.available;
+        }
+      );
+
+      createChoiceButtons(
+        els.voiceChoices,
+        (variant?.voiceOptions || []).map(v => ({
+          value: v.key,
+          label: v.label
+        })),
+        state.selectedVoice,
+        value => {
+          state.selectedVoice = value;
+          renderAll();
+        },
+        item => {
+          const option = (variant?.voiceOptions || []).find(v => v.key === item.value);
+          return !option?.available;
+        }
+      );
+
+      toggleEmptyState(els.bandwidthChoices, variants.length, "Noch keine Bandbreiten hinterlegt.");
+      toggleEmptyState(els.termChoices, (variant?.terms || []).length, "Noch keine Laufzeiten hinterlegt.");
+      toggleEmptyState(els.slaChoices, (variant?.slaOptions || []).length, "Noch keine SLA-Optionen hinterlegt.");
+      toggleEmptyState(els.voiceChoices, (variant?.voiceOptions || []).length, "Noch keine Voice-Optionen hinterlegt.");
+
+      const term = getCurrentTerm();
+      const availableDiscounts = getAvailableDiscounts(product, variant, term);
+
+      createChoiceButtons(
+        els.discountChoices,
+        availableDiscounts.map(discount => ({
+          value: discount.key,
+          label: discount.internalName
+        })),
+        null,
+        value => {
+          if (state.autoApplyDiscounts) return;
+
+          if (state.selectedDiscountKeys.includes(value)) {
+            state.selectedDiscountKeys = state.selectedDiscountKeys.filter(key => key !== value);
+          } else {
+            state.selectedDiscountKeys = [...state.selectedDiscountKeys, value];
+          }
+
+          renderAll();
+        },
+        () => state.autoApplyDiscounts
+      );
+
+      Array.from(els.discountChoices.querySelectorAll(".choice-card")).forEach(btn => {
+        const discountKey = availableDiscounts.find(discount => discount.internalName === btn.textContent)?.key;
+        if (!state.autoApplyDiscounts && discountKey && state.selectedDiscountKeys.includes(discountKey)) {
+          btn.classList.add("active");
+        }
+      });
+
+      toggleEmptyState(els.discountChoices, availableDiscounts.length, "Für diese Kombination sind keine Rabatte hinterlegt.");
+    }
+
+    function toggleEmptyState(container, length, text) {
+      if (length > 0) return;
+      container.innerHTML = `<div class="subtle">${escapeHtml(text)}</div>`;
+    }
+
+    function getFormData() {
+      return {
+        companyName: els.companyName.value.trim(),
+        contactEmail: els.contactEmail.value.trim(),
+        firstName: els.firstName.value.trim(),
+        lastName: els.lastName.value.trim(),
+        street: els.street.value.trim(),
+        houseNumber: els.houseNumber.value.trim(),
+        postalCode: els.postalCode.value.trim(),
+        city: els.city.value.trim(),
+        internalNote: els.internalNote.value.trim()
+      };
+    }
+
+    function renderAvailabilityResults(matches = []) {
+      if (!els.availabilityResultsBox) return;
+
+      const rows = [1, 2, 3].map(rank => {
+        const match = Array.isArray(matches) ? matches.find(item => Number(item.rank) === rank) : null;
+        return [
+          `Verfügbarkeit ${rank}`,
+          match?.label || "—"
+        ];
+      });
+
+      els.availabilityResultsBox.innerHTML = rows.map(([left, right]) => `
+        <div class="summary-row">
+          <span>${escapeHtml(left)}</span>
+          <span>${escapeHtml(right)}</span>
+        </div>
+      `).join("");
+    }
+
+    async function checkAddressAvailability() {
+      const data = getFormData();
+      const username = els.loginUsername?.value.trim() || "";
+      const password = els.loginPassword?.value || "";
+
+      if (!validateRequiredFields()) {
+        setStatus([
+          { type: "err", text: "Bitte zuerst alle Pflichtfelder für die Adresse ausfüllen." }
+        ]);
+        return;
+      }
+
+      if (!username || !password) {
+        setStatus([
+          { type: "err", text: "Bitte Benutzername und Passwort ausfüllen." }
+        ]);
+        return;
+      }
+
+      const originalButtonText = els.checkAddressBtn.textContent;
+      els.checkAddressBtn.disabled = true;
+      els.checkAddressBtn.textContent = "Adresse wird geprüft ...";
+
+      setStatus([
+        { type: "warn", text: "Automatischer Versatel-Login wird gestartet." },
+        { type: "", text: "Danach wird die Adresse automatisch geprüft." }
+      ]);
+
+      try {
+        const response = await fetch("/api/versatel/check-address-with-login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username,
+            password,
+            street: data.street,
+            houseNumber: data.houseNumber,
+            postalCode: data.postalCode,
+            city: data.city
+          })
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload?.detail || payload?.error || "Adressprüfung fehlgeschlagen.");
+        }
+
+        const matches = Array.isArray(payload?.matches) ? payload.matches : [];
+        renderAvailabilityResults(matches);
+
+        if (matches.length > 0) {
+          setStatus([
+            { type: "ok", text: "Adresse erfolgreich geprüft." },
+            { type: "", text: `Top-Treffer: ${matches.map(item => item.label).join(", ")}` }
+          ]);
+        } else {
+          setStatus([
+            { type: "warn", text: "Adressprüfung abgeschlossen, aber keine priorisierten Treffer gefunden." }
+          ]);
+        }
+      } catch (error) {
+        renderAvailabilityResults([]);
+        setStatus([
+          { type: "err", text: error.message || "Adressprüfung fehlgeschlagen." }
+        ]);
+      } finally {
+        els.checkAddressBtn.disabled = false;
+        els.checkAddressBtn.textContent = originalButtonText;
+      }
+    }
+
+    function renderSummary() {
+      const family = getCurrentFamily();
+      const product = getCurrentProduct();
+      const variant = getCurrentVariant();
+      const term = getCurrentTerm();
+      const sla = getCurrentSlaOption();
+      const voice = getCurrentVoiceOption();
+      const data = getFormData();
+      const pricing = calculatePricing();
+
+      const rows = [
+        ["Firmenname", data.companyName || "—"],
+        ["Ansprechpartner", [data.firstName, data.lastName].filter(Boolean).join(" ") || "—"],
+        ["Adresse", [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—"],
+        ["Produktfamilie", family?.label || "—"],
+        ["Produkt", product?.label || "—"],
+        ["Variante", variant?.label || "—"],
+        ["Vertragslaufzeit", term ? `${term.months} Monate` : "—"],
+        ["SLA", sla?.label || "—"],
+        ["Voice-Dienst", voice?.label || "—"],
+        ["Rabattmodus", state.autoApplyDiscounts ? "Automatik" : "Manuell"],
+        ["Monatlicher Preis", formatEuro(pricing.monthlyTotal)],
+        ["Anschlusskosten", state.waiveConnectionPrice ? "erlassen" : formatEuro(pricing.connectionPrice)],
+        ["Hardware einmalig", state.waiveHardwarePrice ? "erlassen" : formatEuro(pricing.hardwarePrice)]
+      ];
+
+      if (pricing.listMonthlyPrice > pricing.monthlyBase) {
+        rows.splice(10, 0, ["Alter Monatspreis", formatEuro(pricing.listMonthlyPrice)]);
+      }
+
+      if (pricing.activeDiscounts.length > 0) {
+        rows.push(["Aktive Rabattlogik", pricing.activeDiscounts.map(discount => discount.internalName).join(", ")]);
+      }
+
+      if (product?.availability?.note) {
+        rows.push(["Verfügbarkeit", product.availability.note]);
+      }
+
+      els.summaryBox.innerHTML = rows.map(([left, right]) => `
+        <div class="summary-row">
+          <span>${escapeHtml(left)}</span>
+          <span>${escapeHtml(right)}</span>
+        </div>
+      `).join("");
+
+      if (els.priceMonthlyMain) {
+        els.priceMonthlyMain.textContent = formatEuro(pricing.monthlyTotal);
+      }
+      if (els.pricePreviewProduct) {
+        els.pricePreviewProduct.textContent = `${product?.label || "—"} | ${variant?.label || "—"}`;
+      }
+      if (els.priceOldMonthly) {
+        els.priceOldMonthly.textContent = pricing.listMonthlyPrice > pricing.monthlyBase ? formatEuro(pricing.listMonthlyPrice) : "—";
+      }
+      if (els.priceConnection) {
+        els.priceConnection.textContent = state.waiveConnectionPrice ? "erlassen" : formatEuro(pricing.connectionPrice);
+      }
+      if (els.priceHardware) {
+        els.priceHardware.textContent = state.waiveHardwarePrice ? "erlassen" : formatEuro(pricing.hardwarePrice);
+      }
+      if (els.priceTerm) {
+        els.priceTerm.textContent = term ? `${term.months} Monate` : "—";
+      }
+      if (els.priceSla) {
+        els.priceSla.textContent = sla?.label || "—";
+      }
+      if (els.priceVoice) {
+        els.priceVoice.textContent = voice?.label || "—";
+      }
+    }
+
+    function renderAll() {
+      renderFamilies();
+      renderProducts();
+      renderOptions();
+      renderSummary();
+    }
+
+    function validateRequiredFields() {
+      const data = getFormData();
+
+      const required = [
+        data.companyName,
+        data.firstName,
+        data.lastName,
+        data.street,
+        data.houseNumber,
+        data.postalCode,
+        data.city
+      ];
+
+      return required.every(Boolean);
+    }
+
+    function drawRoundedPanel(doc, x, y, w, h, radius = 6, fill = [255, 255, 255], border = [214, 224, 236]) {
+      doc.setFillColor(...fill);
+      doc.setDrawColor(...border);
+      doc.roundedRect(x, y, w, h, radius, radius, "FD");
+    }
+
+    function getPartnerLogoForPdf() {
+      return new Promise((resolve) => {
+        if (!window.PARTNER_LOGO_URL) {
+          resolve(null);
+          return;
+        }
+
+        const img = new Image();
+
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            resolve(canvas.toDataURL("image/png"));
+          } catch (error) {
+            console.error("Logo-Konvertierung fehlgeschlagen:", error);
+            resolve(null);
+          }
+        };
+
+        img.onerror = () => {
+          console.error("Partnerlogo konnte nicht geladen werden:", window.PARTNER_LOGO_URL);
+          resolve(null);
+        };
+
+        img.src = window.PARTNER_LOGO_URL;
+      });
+    }
+
+    async function createOfferPdf() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const data = getFormData();
+  const family = getCurrentFamily();
+  const product = getCurrentProduct();
+  const variant = getCurrentVariant();
+  const term = getCurrentTerm();
+  const sla = getCurrentSlaOption();
+  const voice = getCurrentVoiceOption();
+
+  const pricing = calculatePricing();
+  const hardwarePrice = pricing.hardwarePrice;
+  const connectionPrice = pricing.connectionPrice;
+  const monthlyBase = pricing.monthlyBase;
+  const monthlySla = pricing.monthlySla;
+  const monthlyVoice = pricing.monthlyVoice;
+  const monthlyTotal = pricing.monthlyTotal;
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(250, 252, 255);
+  doc.rect(0, 0, pageWidth, 297, "F");
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pageWidth, 48, "F");
+
+  doc.setDrawColor(220, 228, 236);
+  doc.line(14, 50, 196, 50);
+
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("Ihr individuelles Glasfaser-Angebot", 14, 20);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(92, 114, 138);
+  doc.text("Professionelle Business-Konnektivität für Ihr Unternehmen", 14, 27);
+
+  doc.setDrawColor(200, 210, 222);
+  doc.line(150, 8, 150, 42);
+
+  // Festes Partnerlogo oben rechts
+  const partnerLogoForPdf = await getPartnerLogoForPdf();
+
+  if (partnerLogoForPdf) {
+    doc.addImage(partnerLogoForPdf, "PNG", 154, 9, 34, 34);
+  } else {
+    doc.setDrawColor(28, 73, 128);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(156, 8, 34, 34, "FD");
+    doc.setTextColor(28, 73, 128);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("1&1", 173, 18, { align: "center" });
+    doc.setFontSize(6);
+    doc.text("VERSATEL", 173, 24, { align: "center" });
+    doc.setFontSize(5);
+    doc.text("PARTNER", 173, 30, { align: "center" });
+
+    doc.setTextColor(23, 50, 77);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Logo-Platzhalter", 173, 46, { align: "center" });
+  }
+
+  doc.setFontSize(8);
+  doc.setTextColor(92, 114, 138);
+  doc.text("1&1 Versatel GmbH | Wanheimerstr. 90 | 40468 Düsseldorf", 14, 62);
+
+  const salutationName = [data.firstName, data.lastName].filter(Boolean).join(" ") || "—";
+  const addressLine = [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—";
+  const oneTimeTotal = pricing.oneTimeTotal;
+  const priceSaving = pricing.listMonthlyPrice > monthlyBase ? pricing.listMonthlyPrice - monthlyBase : 0;
+
+  drawRoundedPanel(doc, 14, 70, 118, 44, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Ihr Business-Angebot", 18, 83);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  const heroLines = doc.splitTextToSize(
+    `${product?.label || "Internetlösung"} für zuverlässige Konnektivität, planbare Kosten und eine professionelle Anbindung für Ihr Unternehmen.`,
+    106
+  );
+  doc.text(heroLines, 18, 92);
+
+  drawRoundedPanel(doc, 136, 70, 60, 44, 8, [32, 71, 132], [32, 71, 132]);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Monatlicher Preis", 140, 81);
+  doc.setFontSize(22);
+  doc.text(formatEuro(monthlyTotal), 140, 95);
+
+  if (variant?.oldMonthlyPrice) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text(`statt ${formatEuro(variant.oldMonthlyPrice)}`, 140, 102);
+  }
+
+  if (priceSaving > 0) {
+    doc.setFontSize(8.5);
+    doc.text(`Sie sparen ${formatEuro(priceSaving)} / Monat`, 140, 108);
+  }
+
+  drawRoundedPanel(doc, 14, 122, 182, 34, 8, [248, 251, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.text("Ihre Vorteile", 18, 133);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text("• Planbare monatliche Kosten", 18, 142);
+  doc.text("• Klare Vertragslaufzeit", 104, 142);
+  doc.text("• Transparente Einmalkosten", 18, 149);
+  doc.text("• Professionelle Business-Anbindung", 104, 149);
+
+  drawRoundedPanel(doc, 14, 164, 182, 40, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Leistungsübersicht", 18, 176);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Produkt: ${product?.label || "—"}`, 18, 186);
+  doc.text(`Bandbreite: ${variant?.label || "—"}`, 18, 192);
+  doc.text(`Laufzeit: ${term ? `${term.months} Monate` : "—"}`, 18, 198);
+
+  doc.text(`Service Level: ${sla?.label || "—"}`, 108, 186);
+  doc.text(`Voice: ${voice?.label || "Kein Voice-Dienst"}`, 108, 192);
+
+  if (product?.availability?.note) {
+    const availabilityLines = doc.splitTextToSize(`Verfügbarkeit: ${product.availability.note}`, 78);
+    doc.text(availabilityLines, 108, 198);
+  }
+
+  drawRoundedPanel(doc, 14, 212, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Einmalige Kosten", 18, 216);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Anschluss: ${state.waiveConnectionPrice ? "erlassen" : formatEuro(connectionPrice)}`, 18, 228);
+  doc.text(`Hardware: ${state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)}`, 18, 234);
+
+  drawRoundedPanel(doc, 108, 212, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Angebot im Überblick", 112, 216);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Einmalig gesamt: ${formatEuro(oneTimeTotal)}`, 112, 228);
+  doc.text(`Monatlich gesamt: ${formatEuro(monthlyTotal)}`, 112, 234);
+
+  const customerAddressLines = doc.splitTextToSize(`Adresse: ${addressLine}`, 170);
+  const customerPanelHeight = 34 + ((customerAddressLines.length - 1) * 5);
+
+  drawRoundedPanel(doc, 14, 254, 182, customerPanelHeight, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.text("Kundendaten", 18, 265);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Firma: ${data.companyName || "—"}`, 18, 273);
+  doc.text(`Ansprechpartner: ${salutationName}`, 18, 279);
+  doc.text(customerAddressLines, 18, 285);
+
+  doc.setDrawColor(210, 220, 232);
+  doc.line(14, 289, 196, 289);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(107, 127, 149);
+  doc.text("Alle angegebenen Preise verstehen sich als Netto-Preise zzgl. der gesetzlichen Mehrwertsteuer.", 14, 294);
+  doc.text("1", 196, 294, { align: "right" });
+
+  const fileName = `angebot_${(data.companyName || "kunde").replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`;
+  doc.save(fileName);
+}
+
+    els.loginBtn.addEventListener("click", () => {
+      const username = els.loginUsername.value.trim();
+      const password = els.loginPassword.value.trim();
+
+      if (!username || !password) {
+        setStatus([
+          { type: "err", text: "Bitte Benutzername und Passwort eingeben." }
+        ]);
+        return;
+      }
+
+      state.isLoggedIn = true;
+      updateLoginUi();
+    });
+
+    els.logoutBtn.addEventListener("click", () => {
+      state.isLoggedIn = false;
+      updateLoginUi();
+    });
+
+    [
+      els.companyName,
+      els.contactEmail,
+      els.firstName,
+      els.lastName,
+      els.street,
+      els.houseNumber,
+      els.postalCode,
+      els.city,
+      els.internalNote
+    ].forEach(el => {
+      el.addEventListener("input", renderSummary);
+    });
+
+    if (els.waiveHardwareCheckbox) {
+      els.waiveHardwareCheckbox.addEventListener("change", () => {
+        state.waiveHardwarePrice = els.waiveHardwareCheckbox.checked;
+        renderSummary();
+      });
+    }
+
+    if (els.waiveConnectionCheckbox) {
+      els.waiveConnectionCheckbox.addEventListener("change", () => {
+        state.waiveConnectionPrice = els.waiveConnectionCheckbox.checked;
+        renderSummary();
+      });
+    }
+
+    if (els.autoDiscountCheckbox) {
+      els.autoDiscountCheckbox.addEventListener("change", () => {
+        state.autoApplyDiscounts = els.autoDiscountCheckbox.checked;
+        renderAll();
+      });
+    }
+
+    els.checkAddressBtn.addEventListener("click", () => {
+      checkAddressAvailability();
+    });
+
+    els.sendOfferBtn.addEventListener("click", () => {
+      if (!validateRequiredFields()) {
+        setStatus([
+          { type: "err", text: "Bitte zuerst alle Pflichtfelder für das Angebot ausfüllen." }
+        ]);
+        return;
+      }
+
+      createOfferPdf();
+
+      setStatus([
+        { type: "ok", text: "PDF wurde erstellt und heruntergeladen." },
+        { type: "", text: "Nächster Schritt: Backend anbinden, um das PDF automatisch per E-Mail zu versenden." }
+      ]);
+    });
+
+    if (els.autoDiscountCheckbox) {
+      els.autoDiscountCheckbox.checked = state.autoApplyDiscounts;
+    }
+
+    ensureSelections();
+    renderAll();
+    renderAvailabilityResults([]);
+    updateLoginUi();
+  </script>
+</body>
+</html>
