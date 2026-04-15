@@ -1319,10 +1319,19 @@
           })
         });
 
-        const payload = await response.json();
+        const rawText = await response.text();
+        let payload = {};
+
+        if (rawText && rawText.trim()) {
+          try {
+            payload = JSON.parse(rawText);
+          } catch (parseError) {
+            throw new Error(`Server antwortet nicht als JSON. HTTP ${response.status}`);
+          }
+        }
 
         if (!response.ok) {
-          throw new Error(payload?.detail || payload?.error || "Adressprüfung fehlgeschlagen.");
+          throw new Error(payload?.detail || payload?.error || `Adressprüfung fehlgeschlagen. HTTP ${response.status}`);
         }
 
         const matches = Array.isArray(payload?.matches) ? payload.matches : [];
