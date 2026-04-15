@@ -85,13 +85,46 @@ window.PRODUCT_CATALOG = {
               bandwidthLabel: "300 Mbit/s",
               downloadMbit: 300,
               uploadMbit: 100,
+              pricing: {
+                list: {
+                  monthly: 299.00,
+                  connection: 1500.00,
+                  hardware: 149.00
+                },
+                display: {
+                  oldMonthlyPrice: null,
+                  oldConnectionPrice: 1500.00,
+                  oldHardwarePrice: null
+                }
+              },
               monthlyPrice: 299.00,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 299.00 },
-                { months: 48, monthlyPrice: 299.00 },
-                { months: 60, monthlyPrice: 299.00 }
+                {
+                  months: 36,
+                  monthlyPrice: 299.00,
+                  listMonthlyPrice: 299.00,
+                  connectionPrice: 1500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard", "connect_monthly_campaign_300_100"]
+                },
+                {
+                  months: 48,
+                  monthlyPrice: 299.00,
+                  listMonthlyPrice: 299.00,
+                  connectionPrice: 500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                },
+                {
+                  months: 60,
+                  monthlyPrice: 299.00,
+                  listMonthlyPrice: 299.00,
+                  connectionPrice: 0.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -109,13 +142,46 @@ window.PRODUCT_CATALOG = {
               bandwidthLabel: "600 Mbit/s",
               downloadMbit: 600,
               uploadMbit: 200,
+              pricing: {
+                list: {
+                  monthly: 449.00,
+                  connection: 1500.00,
+                  hardware: 149.00
+                },
+                display: {
+                  oldMonthlyPrice: null,
+                  oldConnectionPrice: 1500.00,
+                  oldHardwarePrice: null
+                }
+              },
               monthlyPrice: 449.00,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 449.00 },
-                { months: 48, monthlyPrice: 449.00 },
-                { months: 60, monthlyPrice: 449.00 }
+                {
+                  months: 36,
+                  monthlyPrice: 449.00,
+                  listMonthlyPrice: 449.00,
+                  connectionPrice: 1500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                },
+                {
+                  months: 48,
+                  monthlyPrice: 449.00,
+                  listMonthlyPrice: 449.00,
+                  connectionPrice: 500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                },
+                {
+                  months: 60,
+                  monthlyPrice: 449.00,
+                  listMonthlyPrice: 449.00,
+                  connectionPrice: 0.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -133,13 +199,46 @@ window.PRODUCT_CATALOG = {
               bandwidthLabel: "1000 Mbit/s",
               downloadMbit: 1000,
               uploadMbit: 300,
+              pricing: {
+                list: {
+                  monthly: 619.00,
+                  connection: 1500.00,
+                  hardware: 149.00
+                },
+                display: {
+                  oldMonthlyPrice: null,
+                  oldConnectionPrice: 1500.00,
+                  oldHardwarePrice: null
+                }
+              },
               monthlyPrice: 619.00,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 619.00 },
-                { months: 48, monthlyPrice: 619.00 },
-                { months: 60, monthlyPrice: 619.00 }
+                {
+                  months: 36,
+                  monthlyPrice: 619.00,
+                  listMonthlyPrice: 619.00,
+                  connectionPrice: 1500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                },
+                {
+                  months: 48,
+                  monthlyPrice: 619.00,
+                  listMonthlyPrice: 619.00,
+                  connectionPrice: 500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                },
+                {
+                  months: 60,
+                  monthlyPrice: 619.00,
+                  listMonthlyPrice: 619.00,
+                  connectionPrice: 0.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["connect_waived_connection_standard"]
+                }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -245,8 +344,8 @@ window.PRODUCT_CATALOG = {
                   hardware: 149.00
                 },
                 display: {
-                  oldMonthlyPrice: null,
-                  oldConnectionPrice: null,
+                  oldMonthlyPrice: 449.00,
+                  oldConnectionPrice: 1500.00,
                   oldHardwarePrice: null
                 }
               },
@@ -254,9 +353,30 @@ window.PRODUCT_CATALOG = {
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 449.00 },
-                { months: 48, monthlyPrice: 449.00 },
-                { months: 60, monthlyPrice: 449.00 }
+                {
+                  months: 36,
+                  monthlyPrice: 449.00,
+                  listMonthlyPrice: 449.00,
+                  connectionPrice: 1500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_monthly_campaign_300_300", "premium_connection_discount_all"]
+                },
+                {
+                  months: 48,
+                  monthlyPrice: 449.00,
+                  listMonthlyPrice: 449.00,
+                  connectionPrice: 500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all"]
+                },
+                {
+                  months: 60,
+                  monthlyPrice: 449.00,
+                  listMonthlyPrice: 449.00,
+                  connectionPrice: 0.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all"]
+                }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -274,13 +394,46 @@ window.PRODUCT_CATALOG = {
               bandwidthLabel: "600 Mbit/s",
               downloadMbit: 600,
               uploadMbit: 600,
+              pricing: {
+                list: {
+                  monthly: 619.00,
+                  connection: 1500.00,
+                  hardware: 149.00
+                },
+                display: {
+                  oldMonthlyPrice: null,
+                  oldConnectionPrice: 1500.00,
+                  oldHardwarePrice: null
+                }
+              },
               monthlyPrice: 619.00,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 619.00 },
-                { months: 48, monthlyPrice: 619.00 },
-                { months: 60, monthlyPrice: 619.00 }
+                {
+                  months: 36,
+                  monthlyPrice: 619.00,
+                  listMonthlyPrice: 619.00,
+                  connectionPrice: 1500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all"]
+                },
+                {
+                  months: 48,
+                  monthlyPrice: 619.00,
+                  listMonthlyPrice: 619.00,
+                  connectionPrice: 500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all"]
+                },
+                {
+                  months: 60,
+                  monthlyPrice: 619.00,
+                  listMonthlyPrice: 619.00,
+                  connectionPrice: 0.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all"]
+                }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -298,13 +451,46 @@ window.PRODUCT_CATALOG = {
               bandwidthLabel: "1000 Mbit/s",
               downloadMbit: 1000,
               uploadMbit: 1000,
+              pricing: {
+                list: {
+                  monthly: 749.00,
+                  connection: 1500.00,
+                  hardware: 149.00
+                },
+                display: {
+                  oldMonthlyPrice: null,
+                  oldConnectionPrice: 1500.00,
+                  oldHardwarePrice: null
+                }
+              },
               monthlyPrice: 749.00,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 749.00 },
-                { months: 48, monthlyPrice: 749.00 },
-                { months: 60, monthlyPrice: 749.00 }
+                {
+                  months: 36,
+                  monthlyPrice: 749.00,
+                  listMonthlyPrice: 749.00,
+                  connectionPrice: 1500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all", "premium_special_bid_1000_1000"]
+                },
+                {
+                  months: 48,
+                  monthlyPrice: 749.00,
+                  listMonthlyPrice: 749.00,
+                  connectionPrice: 500.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all", "premium_special_bid_1000_1000"]
+                },
+                {
+                  months: 60,
+                  monthlyPrice: 749.00,
+                  listMonthlyPrice: 749.00,
+                  connectionPrice: 0.00,
+                  hardwarePriceOnce: 149.00,
+                  applicableDiscountKeys: ["premium_connection_discount_all"]
+                }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -326,9 +512,9 @@ window.PRODUCT_CATALOG = {
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 1299.00 },
-                { months: 48, monthlyPrice: 1299.00 },
-                { months: 60, monthlyPrice: 1299.00 }
+                { months: 36, monthlyPrice: 1299.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 48, monthlyPrice: 1299.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 60, monthlyPrice: 1299.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -350,9 +536,9 @@ window.PRODUCT_CATALOG = {
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 1999.00 },
-                { months: 48, monthlyPrice: 1999.00 },
-                { months: 60, monthlyPrice: 1999.00 }
+                { months: 36, monthlyPrice: 1999.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 48, monthlyPrice: 1999.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 60, monthlyPrice: 1999.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -374,9 +560,9 @@ window.PRODUCT_CATALOG = {
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 2599.00 },
-                { months: 48, monthlyPrice: 2599.00 },
-                { months: 60, monthlyPrice: 2599.00 }
+                { months: 36, monthlyPrice: 2599.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 48, monthlyPrice: 2599.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 60, monthlyPrice: 2599.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
