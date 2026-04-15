@@ -1,484 +1,1516 @@
-window.PRODUCT_CATALOG = {
-  meta: {
-    version: "1.0.0",
-    currency: "EUR",
-    source: "CAN Lead Produktkatalog"
-  },
-
-  families: {
-    internet: {
-      key: "internet",
-      label: "Internet",
-      products: {
-        glasfaser_connect: {
-          key: "glasfaser_connect",
-          label: "1&1 Glasfaser Connect",
-          availability: {
-            allowedStatuses: ["onnet", "buildings_passed", "nearnet", "offnet", "telekom_vorleistung", "unklar"]
-          },
-          variants: [
-            {
-              key: "300_100",
-              label: "300 / 100 Mbit/s",
-              bandwidthLabel: "300 Mbit/s",
-              downloadMbit: 300,
-              uploadMbit: 100,
-              monthlyPrice: 299.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 299.00 },
-                { months: 48, monthlyPrice: 299.00 },
-                { months: 60, monthlyPrice: 299.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "600_200",
-              label: "600 / 200 Mbit/s",
-              bandwidthLabel: "600 Mbit/s",
-              downloadMbit: 600,
-              uploadMbit: 200,
-              monthlyPrice: 449.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 449.00 },
-                { months: 48, monthlyPrice: 449.00 },
-                { months: 60, monthlyPrice: 449.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "1000_300",
-              label: "1000 / 300 Mbit/s",
-              bandwidthLabel: "1000 Mbit/s",
-              downloadMbit: 1000,
-              uploadMbit: 300,
-              monthlyPrice: 619.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 619.00 },
-                { months: 48, monthlyPrice: 619.00 },
-                { months: 60, monthlyPrice: 619.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            }
-          ]
-        },
-
-        glasfaser_premium: {
-          key: "glasfaser_premium",
-          label: "1&1 Glasfaser Premium",
-          availability: {
-            allowedStatuses: ["onnet", "buildings_passed", "nearnet", "offnet", "telekom_vorleistung", "unklar"]
-          },
-          variants: [
-            {
-              key: "300_300",
-              label: "300 / 300 Mbit/s",
-              bandwidthLabel: "300 Mbit/s",
-              downloadMbit: 300,
-              uploadMbit: 300,
-              monthlyPrice: 449.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 449.00 },
-                { months: 48, monthlyPrice: 449.00 },
-                { months: 60, monthlyPrice: 449.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "600_600",
-              label: "600 / 600 Mbit/s",
-              bandwidthLabel: "600 Mbit/s",
-              downloadMbit: 600,
-              uploadMbit: 600,
-              monthlyPrice: 619.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 619.00 },
-                { months: 48, monthlyPrice: 619.00 },
-                { months: 60, monthlyPrice: 619.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "1000_1000",
-              label: "1000 / 1000 Mbit/s",
-              bandwidthLabel: "1000 Mbit/s",
-              downloadMbit: 1000,
-              uploadMbit: 1000,
-              monthlyPrice: 749.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 749.00 },
-                { months: 48, monthlyPrice: 749.00 },
-                { months: 60, monthlyPrice: 749.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "2000_2000",
-              label: "2 / 2 Gbit/s",
-              bandwidthLabel: "2 Gbit/s",
-              downloadMbit: 2000,
-              uploadMbit: 2000,
-              monthlyPrice: 1299.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 1299.00 },
-                { months: 48, monthlyPrice: 1299.00 },
-                { months: 60, monthlyPrice: 1299.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "5000_5000",
-              label: "5 / 5 Gbit/s",
-              bandwidthLabel: "5 Gbit/s",
-              downloadMbit: 5000,
-              uploadMbit: 5000,
-              monthlyPrice: 1999.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 1999.00 },
-                { months: 48, monthlyPrice: 1999.00 },
-                { months: 60, monthlyPrice: 1999.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "10000_10000",
-              label: "10 / 10 Gbit/s",
-              bandwidthLabel: "10 Gbit/s",
-              downloadMbit: 10000,
-              uploadMbit: 10000,
-              monthlyPrice: 2599.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 2599.00 },
-                { months: 48, monthlyPrice: 2599.00 },
-                { months: 60, monthlyPrice: 2599.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            }
-          ]
-        },
-
-        glasfaser_business_pro: {
-          key: "glasfaser_business_pro",
-          label: "1&1 Glasfaser Business Pro",
-          availability: {
-            allowedStatuses: ["onnet", "buildings_passed", "nearnet", "offnet", "telekom_vorleistung", "unklar"]
-          },
-          variants: [
-            {
-              key: "50_10",
-              label: "50 / 10 Mbit/s",
-              bandwidthLabel: "50 Mbit/s",
-              downloadMbit: 50,
-              uploadMbit: 10,
-              monthlyPrice: 399.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 399.00 },
-                { months: 48, monthlyPrice: 399.00 },
-                { months: 60, monthlyPrice: 399.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "100_20",
-              label: "100 / 20 Mbit/s",
-              bandwidthLabel: "100 Mbit/s",
-              downloadMbit: 100,
-              uploadMbit: 20,
-              monthlyPrice: 499.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 499.00 },
-                { months: 48, monthlyPrice: 499.00 },
-                { months: 60, monthlyPrice: 499.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "200_50",
-              label: "200 / 50 Mbit/s",
-              bandwidthLabel: "200 Mbit/s",
-              downloadMbit: 200,
-              uploadMbit: 50,
-              monthlyPrice: 599.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 599.00 },
-                { months: 48, monthlyPrice: 599.00 },
-                { months: 60, monthlyPrice: 599.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "500_100",
-              label: "500 / 100 Mbit/s",
-              bandwidthLabel: "500 Mbit/s",
-              downloadMbit: 500,
-              uploadMbit: 100,
-              monthlyPrice: 699.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 699.00 },
-                { months: 48, monthlyPrice: 699.00 },
-                { months: 60, monthlyPrice: 699.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            },
-            {
-              key: "1000_200",
-              label: "1000 / 200 Mbit/s",
-              bandwidthLabel: "1000 Mbit/s",
-              downloadMbit: 1000,
-              uploadMbit: 200,
-              monthlyPrice: 899.00,
-              connectionPrice: 1500.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 36, monthlyPrice: 899.00 },
-                { months: 48, monthlyPrice: 899.00 },
-                { months: 60, monthlyPrice: 899.00 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
-                { key: "plus", label: "Plus", priceMonthly: null, available: false },
-                { key: "profi", label: "Profi", priceMonthly: null, available: false }
-              ],
-              voiceOptions: [
-                { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
-                { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
-              ]
-            }
-          ]
-        },
-
-        office_fast_secure: {
-          key: "office_fast_secure",
-          label: "1&1 Office Fast & Secure",
-          availability: {
-            allowedStatuses: ["onnet", "buildings_passed"],
-            note: "Nur für Onnet und Buildings Passed"
-          },
-          variants: [
-            {
-              key: "150_50",
-              label: "150 / 50 Mbit/s",
-              bandwidthLabel: "150 Mbit/s",
-              downloadMbit: 150,
-              uploadMbit: 50,
-              monthlyPrice: 39.90,
-              oldMonthlyPrice: 59.99,
-              connectionPrice: 0.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 24, monthlyPrice: 39.90 },
-                { months: 36, monthlyPrice: 39.90 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true }
-              ],
-              voiceOptions: [],
-              marketingBadges: ["Wechslerbonus"]
-            },
-            {
-              key: "300_100",
-              label: "300 / 100 Mbit/s",
-              bandwidthLabel: "300 Mbit/s",
-              downloadMbit: 300,
-              uploadMbit: 100,
-              monthlyPrice: 49.90,
-              oldMonthlyPrice: 79.99,
-              connectionPrice: 0.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 24, monthlyPrice: 49.90 },
-                { months: 36, monthlyPrice: 49.90 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true }
-              ],
-              voiceOptions: [],
-              marketingBadges: ["Wechslerbonus"]
-            },
-            {
-              key: "600_200",
-              label: "600 / 200 Mbit/s",
-              bandwidthLabel: "600 Mbit/s",
-              downloadMbit: 600,
-              uploadMbit: 200,
-              monthlyPrice: 59.90,
-              oldMonthlyPrice: 99.99,
-              connectionPrice: 0.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 24, monthlyPrice: 59.90 },
-                { months: 36, monthlyPrice: 59.90 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true }
-              ],
-              voiceOptions: [],
-              marketingBadges: ["Wechslerbonus", "Bestseller"]
-            },
-            {
-              key: "1000_300",
-              label: "1000 / 300 Mbit/s",
-              bandwidthLabel: "1000 Mbit/s",
-              downloadMbit: 1000,
-              uploadMbit: 300,
-              monthlyPrice: 69.90,
-              oldMonthlyPrice: 109.99,
-              connectionPrice: 0.00,
-              hardwarePriceOnce: 149.00,
-              terms: [
-                { months: 24, monthlyPrice: 69.90 },
-                { months: 36, monthlyPrice: 69.90 }
-              ],
-              slaOptions: [
-                { key: "basis", label: "Basis", priceMonthly: 0.00, available: true }
-              ],
-              voiceOptions: [],
-              marketingBadges: ["Wechslerbonus"]
-            }
-          ]
-        }
-      }
-    },
-
-    managed_wlan: {
-      key: "managed_wlan",
-      label: "Managed WLAN",
-      products: {}
-    },
-
-    unified_communications: {
-      key: "unified_communications",
-      label: "Unified Communications",
-      products: {}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CAN Lead | Versatel Angebots-Tool</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-2: #f8fbff;
+      --text: #17324d;
+      --muted: #6f88a3;
+      --border: rgba(23, 50, 77, 0.12);
+      --border-strong: rgba(23, 50, 77, 0.2);
+      --accent: #2d8cff;
+      --accent-2: #11b8c9;
+      --ok: #159b66;
+      --danger: #d84d68;
+      --warning: #c88911;
+      --shadow: 0 12px 30px rgba(18, 44, 71, 0.08);
+      --radius: 18px;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(45,140,255,0.08), transparent 18%),
+        radial-gradient(circle at top right, rgba(17,184,201,0.08), transparent 22%),
+        linear-gradient(180deg, #f6f9fd 0%, #eef4fb 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 38px;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      font-weight: 800;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 760px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(45,140,255,0.08);
+      color: #1f5eaf;
+      border: 1px solid rgba(45,140,255,0.14);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr) 300px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(5px);
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(23,50,77,0.75);
+      position: relative;
+    }
+
+    .section-title::after {
+      content: "";
+      display: block;
+      width: 44px;
+      height: 3px;
+      margin: 9px auto 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      opacity: 0.8;
+    }
+
+    .stepper {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+    }
+
+    .step-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(45,140,255,0.1);
+      color: #1f5eaf;
+      font-weight: 800;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+
+    .step-text strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+
+    .step-text span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0 6px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #f7fbff;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 15px;
+      min-height: 46px;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(45,140,255,0.45);
+      box-shadow: 0 0 0 4px rgba(45,140,255,0.10);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 94px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    button:hover {
+      filter: brightness(1.02);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      filter: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border: none;
+      box-shadow: 0 10px 20px rgba(45,140,255,0.18);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+    }
+
+    .btn-danger {
+      background: rgba(216,77,104,0.08);
+      color: var(--danger);
+      border: 1px solid rgba(216,77,104,0.18);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .toolbar button {
+      width: auto;
+      min-width: 160px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .locked {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .locked::after {
+      content: "Bitte zuerst einloggen";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(246, 250, 255, 0.72);
+      color: #234a75;
+      font-weight: 800;
+      font-size: 16px;
+      backdrop-filter: blur(3px);
+      z-index: 3;
+    }
+
+    .locked .lock-content {
+      pointer-events: none;
+      filter: blur(1px);
+      opacity: 0.62;
+    }
+
+    .panel-stack {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .sticky-side {
+      position: sticky;
+      top: 20px;
+      display: grid;
+      gap: 18px;
+      align-self: start;
+    }
+
+    .price-preview {
+      border: 1px solid rgba(23,50,77,0.10);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f2f8fd 100%);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .price-main {
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid rgba(23,50,77,0.08);
+      padding: 16px;
+    }
+
+    .price-kicker {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .price-big {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .price-sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .price-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .price-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      padding-bottom: 8px;
+    }
+
+    .price-item:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .price-item span:first-child {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .price-item span:last-child {
+      font-size: 14px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .choice-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .choice-card {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 68px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(23,50,77,0.12);
+      background: #fff;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      text-align: left;
+      box-shadow: none;
+    }
+
+    .choice-card.active {
+      border-color: #2a67df;
+      box-shadow: 0 0 0 1px rgba(42,103,223,0.14);
+      background: #ffffff;
+    }
+
+    .choice-card.muted {
+      opacity: 0.48;
+      cursor: not-allowed;
+      background: #f3f5f7;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .summary {
+      border: 1px solid rgba(23,50,77,0.1);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f4f9fd 100%);
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      padding-bottom: 8px;
+    }
+
+    .summary-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .summary-row span:first-child {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .summary-row span:last-child {
+      text-align: right;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .status-box {
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfdff;
+      border: 1px solid rgba(23,50,77,0.08);
+      min-height: 150px;
+    }
+
+    .status-line {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba(23,50,77,0.08);
+      font-size: 14px;
+    }
+
+    .status-line:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-top: 5px;
+      flex: 0 0 auto;
+      background: #c8d4e2;
+    }
+
+    .dot.ok {
+      background: var(--ok);
+    }
+
+    .dot.warn {
+      background: var(--warning);
+    }
+
+    .dot.err {
+      background: var(--danger);
+    }
+
+    .info {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1080px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .choice-grid,
+      .row,
+      .row-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+
+      .toolbar button {
+        width: 100%;
+      }
+
+      .sticky-side {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>CAN Lead <span style="color:#2d8cff;">Versatel Angebots-Tool</span></h1>
+        <p>
+          Kunden- und Produktdaten zentral erfassen.
+        </p>
+      </div>
+      <div class="badge" id="loginStateBadge">Nicht eingeloggt</div>
+    </div>
+
+    <div class="grid">
+      <aside class="panel-stack">
+        <div class="card">
+          <div class="section-title">Ablauf</div>
+          <div class="stepper">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text">
+                <strong>Einloggen</strong>
+                <span>Zugang zum Tool freischalten.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text">
+                <strong>Kundendaten erfassen</strong>
+                <span>Firma, Ansprechpartner und Adresse eintragen.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text">
+                <strong>Produkt konfigurieren</strong>
+                <span>Produktfamilie, Produkt und Optionen wählen.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-text">
+                <strong>Angebot versenden</strong>
+                <span>Später an den Bot und Mailversand übergeben.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Login</div>
+
+          <label for="loginUsername">Benutzername</label>
+          <input id="loginUsername" type="text" placeholder="Benutzername eingeben" />
+
+          <label for="loginPassword">Passwort</label>
+          <input id="loginPassword" type="password" placeholder="Passwort eingeben" />
+
+          <div class="toolbar">
+            <button id="loginBtn" class="btn-primary" type="button">Einloggen</button>
+            <button id="logoutBtn" class="btn-secondary" type="button" disabled>Abmelden</button>
+          </div>
+
+          <div class="info">
+            In dieser ersten Version ist der Login noch lokal simuliert. Später wird hier dein echtes
+            Backend angebunden.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Status</div>
+          <div class="status-box" id="statusBox">
+            <div class="status-line">
+              <div class="dot warn"></div>
+              <div>Warte auf Login.</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="panel-stack">
+        <section id="workflowSection" class="locked">
+          <div class="lock-content panel-stack">
+            <div class="card">
+              <div class="section-title">Kundendaten</div>
+
+              <div class="row">
+                <div>
+                  <label for="companyName">Firmenname</label>
+                  <input id="companyName" type="text" placeholder="z. B. Muster GmbH" />
+                </div>
+                <div>
+                  <label for="contactEmail">E-Mail (optional)</label>
+                  <input id="contactEmail" type="email" placeholder="z. B. kontakt@firma.de" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="firstName">Vorname</label>
+                  <input id="firstName" type="text" placeholder="Vorname" />
+                </div>
+                <div>
+                  <label for="lastName">Nachname</label>
+                  <input id="lastName" type="text" placeholder="Nachname" />
+                </div>
+              </div>
+
+              <div class="row-3">
+                <div>
+                  <label for="street">Straße</label>
+                  <input id="street" type="text" placeholder="Straße" />
+                </div>
+                <div>
+                  <label for="houseNumber">Hausnummer</label>
+                  <input id="houseNumber" type="text" placeholder="Nr." />
+                </div>
+                <div>
+                  <label for="postalCode">PLZ</label>
+                  <input id="postalCode" type="text" placeholder="PLZ" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="city">Ort</label>
+                  <input id="city" type="text" placeholder="Ort" />
+                </div>
+                <div>
+                  <label for="internalNote">Interne Notiz (optional)</label>
+                  <input id="internalNote" type="text" placeholder="z. B. Rückruf vereinbart" />
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Produktfamilie</div>
+              <div class="choice-grid" id="familyChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Produkt</div>
+              <div class="choice-grid" id="productChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Bandbreite</div>
+              <div class="choice-grid" id="bandwidthChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Vertragslaufzeit</div>
+              <div class="choice-grid" id="termChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Service Level Agreement</div>
+              <div class="choice-grid" id="slaChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Voice-Dienst</div>
+              <div class="choice-grid" id="voiceChoices"></div>
+            </div>
+
+            <div class="card">
+              <div class="section-title">Zusammenfassung</div>
+              <div class="summary" id="summaryBox"></div>
+
+              <label style="display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14px; color:var(--text); font-weight:700;">
+                <input id="waiveHardwareCheckbox" type="checkbox" style="width:auto; min-height:auto; transform:scale(1.1);" />
+                Hardwarepreis erlassen
+              </label>
+
+              <label style="display:flex; align-items:center; gap:10px; margin-top:10px; font-size:14px; color:var(--text); font-weight:700;">
+                <input id="waiveConnectionCheckbox" type="checkbox" style="width:auto; min-height:auto; transform:scale(1.1);" />
+                Anschlussgebühr erlassen
+              </label>
+
+              <div class="toolbar">
+                <button id="checkAddressBtn" type="button" class="btn-secondary">Adresse prüfen</button>
+                <button id="sendOfferBtn" type="button" class="btn-primary">Angebot als PDF erstellen</button>
+              </div>
+
+              <div class="info">
+                Die Buttons lösen in dieser ersten Version noch keine echte Versatel-Automation aus.
+                Sie bereiten bereits die Struktur vor, damit dein Backend später exakt mit diesen Werten arbeiten kann.
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="sticky-side">
+        <div class="card">
+          <div class="section-title">Preisvorschau</div>
+          <div class="price-preview" id="pricePreviewBox">
+            <div class="price-main">
+              <div class="price-kicker">Monatlich</div>
+              <div class="price-big" id="priceMonthlyMain">0,00 €</div>
+              <div class="price-sub" id="pricePreviewProduct">Noch kein Produkt gewählt</div>
+            </div>
+
+            <div class="price-list">
+              <div class="price-item">
+                <span>Alter Monatspreis</span>
+                <span id="priceOldMonthly">—</span>
+              </div>
+              <div class="price-item">
+                <span>Anschlusskosten</span>
+                <span id="priceConnection">0,00 €</span>
+              </div>
+              <div class="price-item">
+                <span>Hardware einmalig</span>
+                <span id="priceHardware">0,00 €</span>
+              </div>
+              <div class="price-item">
+                <span>Laufzeit</span>
+                <span id="priceTerm">—</span>
+              </div>
+              <div class="price-item">
+                <span>SLA</span>
+                <span id="priceSla">—</span>
+              </div>
+              <div class="price-item">
+                <span>Voice</span>
+                <span id="priceVoice">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="product-data.js"></script>
+<script src="partner-logo.js"></script>
+<script>
+    const productConfig = window.PRODUCT_CATALOG.families;
+
+    const state = {
+      isLoggedIn: false,
+      selectedFamily: "internet",
+      selectedProduct: "office_fast_secure",
+      selectedVariant: "150_50",
+      selectedTerm: 24,
+      selectedSla: "basis",
+      selectedVoice: "",
+      availabilityStatus: "onnet",
+      waiveHardwarePrice: false,
+      waiveConnectionPrice: false
+    };
+
+    const els = {
+      loginUsername: document.getElementById("loginUsername"),
+      loginPassword: document.getElementById("loginPassword"),
+      loginBtn: document.getElementById("loginBtn"),
+      logoutBtn: document.getElementById("logoutBtn"),
+      loginStateBadge: document.getElementById("loginStateBadge"),
+      workflowSection: document.getElementById("workflowSection"),
+      statusBox: document.getElementById("statusBox"),
+      familyChoices: document.getElementById("familyChoices"),
+      productChoices: document.getElementById("productChoices"),
+      bandwidthChoices: document.getElementById("bandwidthChoices"),
+      termChoices: document.getElementById("termChoices"),
+      slaChoices: document.getElementById("slaChoices"),
+      voiceChoices: document.getElementById("voiceChoices"),
+      summaryBox: document.getElementById("summaryBox"),
+      companyName: document.getElementById("companyName"),
+      contactEmail: document.getElementById("contactEmail"),
+      firstName: document.getElementById("firstName"),
+      lastName: document.getElementById("lastName"),
+      street: document.getElementById("street"),
+      houseNumber: document.getElementById("houseNumber"),
+      postalCode: document.getElementById("postalCode"),
+      city: document.getElementById("city"),
+      internalNote: document.getElementById("internalNote"),
+      checkAddressBtn: document.getElementById("checkAddressBtn"),
+      sendOfferBtn: document.getElementById("sendOfferBtn"),
+      waiveHardwareCheckbox: document.getElementById("waiveHardwareCheckbox"),
+      waiveConnectionCheckbox: document.getElementById("waiveConnectionCheckbox"),
+      priceMonthlyMain: document.getElementById("priceMonthlyMain"),
+      pricePreviewProduct: document.getElementById("pricePreviewProduct"),
+      priceOldMonthly: document.getElementById("priceOldMonthly"),
+      priceConnection: document.getElementById("priceConnection"),
+      priceHardware: document.getElementById("priceHardware"),
+      priceTerm: document.getElementById("priceTerm"),
+      priceSla: document.getElementById("priceSla"),
+      priceVoice: document.getElementById("priceVoice")
+    };
+
+    function setStatus(lines) {
+      els.statusBox.innerHTML = lines.map(line => `
+        <div class="status-line">
+          <div class="dot ${line.type || ''}"></div>
+          <div>${escapeHtml(line.text)}</div>
+        </div>
+      `).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function updateLoginUi() {
+      if (state.isLoggedIn) {
+        els.workflowSection.classList.remove("locked");
+        els.loginStateBadge.textContent = "Eingeloggt";
+        els.loginStateBadge.style.background = "rgba(21,155,102,0.10)";
+        els.loginStateBadge.style.color = "#15724c";
+        els.loginStateBadge.style.borderColor = "rgba(21,155,102,0.18)";
+        els.loginBtn.disabled = true;
+        els.logoutBtn.disabled = false;
+
+        setStatus([
+          { type: "ok", text: "Login erfolgreich. Workflow ist freigeschaltet." },
+          { type: "", text: "Kundendaten können jetzt erfasst werden." },
+          { type: "", text: "Produkte können jetzt ausgewählt werden." }
+        ]);
+      } else {
+        els.workflowSection.classList.add("locked");
+        els.loginStateBadge.textContent = "Nicht eingeloggt";
+        els.loginStateBadge.style.background = "rgba(45,140,255,0.08)";
+        els.loginStateBadge.style.color = "#1f5eaf";
+        els.loginStateBadge.style.borderColor = "rgba(45,140,255,0.14)";
+        els.loginBtn.disabled = false;
+        els.logoutBtn.disabled = true;
+
+        setStatus([
+          { type: "warn", text: "Warte auf Login." }
+        ]);
+      }
+    }
+
+    function createChoiceButtons(container, items, selectedValue, onClick, disabledFn = null) {
+      container.innerHTML = "";
+
+      items.forEach(item => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-card";
+        btn.textContent = item.label;
+
+        const isDisabled = disabledFn ? disabledFn(item) : false;
+        if (isDisabled) {
+          btn.classList.add("muted");
+          btn.disabled = true;
+        }
+
+        if (item.value === selectedValue) {
+          btn.classList.add("active");
+        }
+
+        btn.addEventListener("click", () => {
+          if (isDisabled) return;
+          onClick(item.value);
+        });
+
+        container.appendChild(btn);
+      });
+    }
+
+    function getCurrentFamily() {
+      return productConfig[state.selectedFamily];
+    }
+
+    function getCurrentProduct() {
+      const family = getCurrentFamily();
+      return family?.products?.[state.selectedProduct] || null;
+    }
+
+    function getCurrentVariant() {
+      const product = getCurrentProduct();
+      return (product?.variants || []).find(v => v.key === state.selectedVariant) || null;
+    }
+
+    function getCurrentTerm() {
+      const variant = getCurrentVariant();
+      return (variant?.terms || []).find(t => Number(t.months) === Number(state.selectedTerm)) || null;
+    }
+
+    function getCurrentSlaOption() {
+      const variant = getCurrentVariant();
+      return (variant?.slaOptions || []).find(s => s.key === state.selectedSla) || null;
+    }
+
+    function getCurrentVoiceOption() {
+      const variant = getCurrentVariant();
+      return (variant?.voiceOptions || []).find(v => v.key === state.selectedVoice) || null;
+    }
+
+    function formatEuro(value) {
+      const number = Number(value || 0);
+      return number.toLocaleString("de-DE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + " €";
+    }
+
+    function getEffectiveHardwarePrice(variant) {
+      if (!variant) return 0;
+      return state.waiveHardwarePrice ? 0 : Number(variant.hardwarePriceOnce ?? 0);
+    }
+
+    function getEffectiveConnectionPrice(variant) {
+      if (!variant) return 0;
+      return state.waiveConnectionPrice ? 0 : Number(variant.connectionPrice ?? 0);
+    }
+
+    function ensureSelections() {
+      const family = getCurrentFamily();
+      const productKeys = Object.keys(family.products || {});
+      if (!productKeys.includes(state.selectedProduct)) {
+        state.selectedProduct = productKeys[0] || "";
+      }
+
+      const product = getCurrentProduct();
+      const variants = product?.variants || [];
+      const variantKeys = variants.map(v => v.key);
+
+      if (!variantKeys.includes(state.selectedVariant)) {
+        state.selectedVariant = variants[0]?.key || "";
+      }
+
+      const variant = getCurrentVariant();
+
+      const terms = variant?.terms || [];
+      const termValues = terms.map(t => Number(t.months));
+      if (!termValues.includes(Number(state.selectedTerm))) {
+        state.selectedTerm = terms[0]?.months || "";
+      }
+
+      const slaOptions = (variant?.slaOptions || []).filter(s => s.available);
+      const slaKeys = slaOptions.map(s => s.key);
+      if (!slaKeys.includes(state.selectedSla)) {
+        state.selectedSla = slaOptions[0]?.key || "";
+      }
+
+      const voiceOptions = (variant?.voiceOptions || []).filter(v => v.available);
+      const voiceKeys = voiceOptions.map(v => v.key);
+      if (!voiceKeys.includes(state.selectedVoice)) {
+        state.selectedVoice = voiceOptions[0]?.key || "";
+      }
+    }
+
+    function renderFamilies() {
+      const items = Object.entries(productConfig).map(([key, value]) => ({
+        value: key,
+        label: value.label
+      }));
+
+      createChoiceButtons(
+        els.familyChoices,
+        items,
+        state.selectedFamily,
+        value => {
+          state.selectedFamily = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+    }
+
+    function renderProducts() {
+      const family = getCurrentFamily();
+      const items = Object.entries(family.products || {}).map(([key, value]) => ({
+        value: key,
+        label: value.label
+      }));
+
+      createChoiceButtons(
+        els.productChoices,
+        items,
+        state.selectedProduct,
+        value => {
+          state.selectedProduct = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+    }
+
+    function renderOptions() {
+      const product = getCurrentProduct();
+      const variants = product?.variants || [];
+      const variant = getCurrentVariant();
+
+      createChoiceButtons(
+        els.bandwidthChoices,
+        variants.map(v => ({
+          value: v.key,
+          label: v.label
+        })),
+        state.selectedVariant,
+        value => {
+          state.selectedVariant = value;
+          ensureSelections();
+          renderAll();
+        }
+      );
+
+      createChoiceButtons(
+        els.termChoices,
+        (variant?.terms || []).map(v => ({
+          value: Number(v.months),
+          label: `${v.months} Monate`
+        })),
+        Number(state.selectedTerm),
+        value => {
+          state.selectedTerm = Number(value);
+          renderAll();
+        }
+      );
+
+      createChoiceButtons(
+        els.slaChoices,
+        (variant?.slaOptions || []).map(v => ({
+          value: v.key,
+          label: v.label
+        })),
+        state.selectedSla,
+        value => {
+          state.selectedSla = value;
+          renderAll();
+        },
+        item => {
+          const option = (variant?.slaOptions || []).find(v => v.key === item.value);
+          return !option?.available;
+        }
+      );
+
+      createChoiceButtons(
+        els.voiceChoices,
+        (variant?.voiceOptions || []).map(v => ({
+          value: v.key,
+          label: v.label
+        })),
+        state.selectedVoice,
+        value => {
+          state.selectedVoice = value;
+          renderAll();
+        },
+        item => {
+          const option = (variant?.voiceOptions || []).find(v => v.key === item.value);
+          return !option?.available;
+        }
+      );
+
+      toggleEmptyState(els.bandwidthChoices, variants.length, "Noch keine Bandbreiten hinterlegt.");
+      toggleEmptyState(els.termChoices, (variant?.terms || []).length, "Noch keine Laufzeiten hinterlegt.");
+      toggleEmptyState(els.slaChoices, (variant?.slaOptions || []).length, "Noch keine SLA-Optionen hinterlegt.");
+      toggleEmptyState(els.voiceChoices, (variant?.voiceOptions || []).length, "Noch keine Voice-Optionen hinterlegt.");
+    }
+
+    function toggleEmptyState(container, length, text) {
+      if (length > 0) return;
+      container.innerHTML = `<div class="subtle">${escapeHtml(text)}</div>`;
+    }
+
+    function getFormData() {
+      return {
+        companyName: els.companyName.value.trim(),
+        contactEmail: els.contactEmail.value.trim(),
+        firstName: els.firstName.value.trim(),
+        lastName: els.lastName.value.trim(),
+        street: els.street.value.trim(),
+        houseNumber: els.houseNumber.value.trim(),
+        postalCode: els.postalCode.value.trim(),
+        city: els.city.value.trim(),
+        internalNote: els.internalNote.value.trim()
+      };
+    }
+
+    function renderSummary() {
+      const family = getCurrentFamily();
+      const product = getCurrentProduct();
+      const variant = getCurrentVariant();
+      const term = getCurrentTerm();
+      const sla = getCurrentSlaOption();
+      const voice = getCurrentVoiceOption();
+      const data = getFormData();
+
+      const hardwarePrice = getEffectiveHardwarePrice(variant);
+      const connectionPrice = getEffectiveConnectionPrice(variant);
+      const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
+      const monthlySla = Number(sla?.priceMonthly ?? 0);
+      const monthlyVoice = Number(voice?.priceMonthly ?? 0);
+      const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
+
+      const rows = [
+        ["Firmenname", data.companyName || "—"],
+        ["Ansprechpartner", [data.firstName, data.lastName].filter(Boolean).join(" ") || "—"],
+        ["Adresse", [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—"],
+        ["Produktfamilie", family?.label || "—"],
+        ["Produkt", product?.label || "—"],
+        ["Variante", variant?.label || "—"],
+        ["Vertragslaufzeit", term ? `${term.months} Monate` : "—"],
+        ["SLA", sla?.label || "—"],
+        ["Voice-Dienst", voice?.label || "—"],
+        ["Monatlicher Preis", formatEuro(monthlyTotal)],
+        ["Anschlusskosten", state.waiveConnectionPrice ? "erlassen" : formatEuro(connectionPrice)],
+        ["Hardware einmalig", state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)]
+      ];
+
+      if (variant?.oldMonthlyPrice) {
+        rows.splice(10, 0, ["Alter Monatspreis", formatEuro(variant.oldMonthlyPrice)]);
+      }
+
+      if (product?.availability?.note) {
+        rows.push(["Verfügbarkeit", product.availability.note]);
+      }
+
+      els.summaryBox.innerHTML = rows.map(([left, right]) => `
+        <div class="summary-row">
+          <span>${escapeHtml(left)}</span>
+          <span>${escapeHtml(right)}</span>
+        </div>
+      `).join("");
+
+      if (els.priceMonthlyMain) {
+        els.priceMonthlyMain.textContent = formatEuro(monthlyTotal);
+      }
+      if (els.pricePreviewProduct) {
+        els.pricePreviewProduct.textContent = `${product?.label || "—"} | ${variant?.label || "—"}`;
+      }
+      if (els.priceOldMonthly) {
+        els.priceOldMonthly.textContent = variant?.oldMonthlyPrice ? formatEuro(variant.oldMonthlyPrice) : "—";
+      }
+      if (els.priceConnection) {
+        els.priceConnection.textContent = state.waiveConnectionPrice ? "erlassen" : formatEuro(connectionPrice);
+      }
+      if (els.priceHardware) {
+        els.priceHardware.textContent = state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice);
+      }
+      if (els.priceTerm) {
+        els.priceTerm.textContent = term ? `${term.months} Monate` : "—";
+      }
+      if (els.priceSla) {
+        els.priceSla.textContent = sla?.label || "—";
+      }
+      if (els.priceVoice) {
+        els.priceVoice.textContent = voice?.label || "—";
+      }
+    }
+
+    function renderAll() {
+      renderFamilies();
+      renderProducts();
+      renderOptions();
+      renderSummary();
+    }
+
+    function validateRequiredFields() {
+      const data = getFormData();
+
+      const required = [
+        data.companyName,
+        data.firstName,
+        data.lastName,
+        data.street,
+        data.houseNumber,
+        data.postalCode,
+        data.city
+      ];
+
+      return required.every(Boolean);
+    }
+
+    function drawRoundedPanel(doc, x, y, w, h, radius = 6, fill = [255, 255, 255], border = [214, 224, 236]) {
+      doc.setFillColor(...fill);
+      doc.setDrawColor(...border);
+      doc.roundedRect(x, y, w, h, radius, radius, "FD");
+    }
+
+    function getPartnerLogoForPdf() {
+      return new Promise((resolve) => {
+        if (!window.PARTNER_LOGO_URL) {
+          resolve(null);
+          return;
+        }
+
+        const img = new Image();
+
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            resolve(canvas.toDataURL("image/png"));
+          } catch (error) {
+            console.error("Logo-Konvertierung fehlgeschlagen:", error);
+            resolve(null);
+          }
+        };
+
+        img.onerror = () => {
+          console.error("Partnerlogo konnte nicht geladen werden:", window.PARTNER_LOGO_URL);
+          resolve(null);
+        };
+
+        img.src = window.PARTNER_LOGO_URL;
+      });
+    }
+
+    async function createOfferPdf() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const data = getFormData();
+  const family = getCurrentFamily();
+  const product = getCurrentProduct();
+  const variant = getCurrentVariant();
+  const term = getCurrentTerm();
+  const sla = getCurrentSlaOption();
+  const voice = getCurrentVoiceOption();
+
+  const hardwarePrice = getEffectiveHardwarePrice(variant);
+  const connectionPrice = getEffectiveConnectionPrice(variant);
+  const monthlyBase = Number(term?.monthlyPrice ?? variant?.monthlyPrice ?? 0);
+  const monthlySla = Number(sla?.priceMonthly ?? 0);
+  const monthlyVoice = Number(voice?.priceMonthly ?? 0);
+  const monthlyTotal = monthlyBase + monthlySla + monthlyVoice;
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(250, 252, 255);
+  doc.rect(0, 0, pageWidth, 297, "F");
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pageWidth, 48, "F");
+
+  doc.setDrawColor(220, 228, 236);
+  doc.line(14, 50, 196, 50);
+
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("Ihr individuelles Glasfaser-Angebot", 14, 20);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(92, 114, 138);
+  doc.text("Professionelle Business-Konnektivität für Ihr Unternehmen", 14, 27);
+
+  doc.setDrawColor(200, 210, 222);
+  doc.line(150, 8, 150, 42);
+
+  // Festes Partnerlogo oben rechts
+  const partnerLogoForPdf = await getPartnerLogoForPdf();
+
+  if (partnerLogoForPdf) {
+    doc.addImage(partnerLogoForPdf, "PNG", 154, 9, 34, 34);
+  } else {
+    doc.setDrawColor(28, 73, 128);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(156, 8, 34, 34, "FD");
+    doc.setTextColor(28, 73, 128);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("1&1", 173, 18, { align: "center" });
+    doc.setFontSize(6);
+    doc.text("VERSATEL", 173, 24, { align: "center" });
+    doc.setFontSize(5);
+    doc.text("PARTNER", 173, 30, { align: "center" });
+
+    doc.setTextColor(23, 50, 77);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Logo-Platzhalter", 173, 46, { align: "center" });
   }
-};
+
+  doc.setFontSize(8);
+  doc.setTextColor(92, 114, 138);
+  doc.text("1&1 Versatel GmbH | Wanheimerstr. 90 | 40468 Düsseldorf", 14, 62);
+
+  const salutationName = [data.firstName, data.lastName].filter(Boolean).join(" ") || "—";
+  const addressLine = [data.street, data.houseNumber, data.postalCode, data.city].filter(Boolean).join(", ") || "—";
+  const oneTimeTotal = connectionPrice + hardwarePrice;
+  const priceSaving = variant?.oldMonthlyPrice ? Number(variant.oldMonthlyPrice) - monthlyTotal : 0;
+
+  drawRoundedPanel(doc, 14, 70, 118, 44, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Ihr Business-Angebot", 18, 83);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  const heroLines = doc.splitTextToSize(
+    `${product?.label || "Internetlösung"} für zuverlässige Konnektivität, planbare Kosten und eine professionelle Anbindung für Ihr Unternehmen.`,
+    106
+  );
+  doc.text(heroLines, 18, 92);
+
+  drawRoundedPanel(doc, 136, 70, 60, 44, 8, [32, 71, 132], [32, 71, 132]);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Monatlicher Preis", 140, 81);
+  doc.setFontSize(22);
+  doc.text(formatEuro(monthlyTotal), 140, 95);
+
+  if (variant?.oldMonthlyPrice) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text(`statt ${formatEuro(variant.oldMonthlyPrice)}`, 140, 102);
+  }
+
+  if (priceSaving > 0) {
+    doc.setFontSize(8.5);
+    doc.text(`Sie sparen ${formatEuro(priceSaving)} / Monat`, 140, 108);
+  }
+
+  drawRoundedPanel(doc, 14, 122, 182, 34, 8, [248, 251, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.text("Ihre Vorteile", 18, 133);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text("• Planbare monatliche Kosten", 18, 142);
+  doc.text("• Klare Vertragslaufzeit", 104, 142);
+  doc.text("• Transparente Einmalkosten", 18, 149);
+  doc.text("• Professionelle Business-Anbindung", 104, 149);
+
+  drawRoundedPanel(doc, 14, 164, 182, 40, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Leistungsübersicht", 18, 176);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Produkt: ${product?.label || "—"}`, 18, 186);
+  doc.text(`Bandbreite: ${variant?.label || "—"}`, 18, 192);
+  doc.text(`Laufzeit: ${term ? `${term.months} Monate` : "—"}`, 18, 198);
+
+  doc.text(`Service Level: ${sla?.label || "—"}`, 108, 186);
+  doc.text(`Voice: ${voice?.label || "Kein Voice-Dienst"}`, 108, 192);
+
+  if (product?.availability?.note) {
+    const availabilityLines = doc.splitTextToSize(`Verfügbarkeit: ${product.availability.note}`, 78);
+    doc.text(availabilityLines, 108, 198);
+  }
+
+  drawRoundedPanel(doc, 14, 212, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Einmalige Kosten", 18, 216);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Anschluss: ${state.waiveConnectionPrice ? "erlassen" : formatEuro(connectionPrice)}`, 18, 228);
+  doc.text(`Hardware: ${state.waiveHardwarePrice ? "erlassen" : formatEuro(hardwarePrice)}`, 18, 234);
+
+  drawRoundedPanel(doc, 108, 212, 88, 34, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Angebot im Überblick", 112, 216);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Einmalig gesamt: ${formatEuro(oneTimeTotal)}`, 112, 228);
+  doc.text(`Monatlich gesamt: ${formatEuro(monthlyTotal)}`, 112, 234);
+
+  const customerAddressLines = doc.splitTextToSize(`Adresse: ${addressLine}`, 170);
+  const customerPanelHeight = 34 + ((customerAddressLines.length - 1) * 5);
+
+  drawRoundedPanel(doc, 14, 254, 182, customerPanelHeight, 8, [255, 255, 255], [219, 227, 237]);
+  doc.setTextColor(23, 50, 77);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.text("Kundendaten", 18, 265);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`Firma: ${data.companyName || "—"}`, 18, 273);
+  doc.text(`Ansprechpartner: ${salutationName}`, 18, 279);
+  doc.text(customerAddressLines, 18, 285);
+
+  doc.setDrawColor(210, 220, 232);
+  doc.line(14, 289, 196, 289);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(107, 127, 149);
+  doc.text("Alle angegebenen Preise verstehen sich als Netto-Preise zzgl. der gesetzlichen Mehrwertsteuer.", 14, 294);
+  doc.text("1", 196, 294, { align: "right" });
+
+  const fileName = `angebot_${(data.companyName || "kunde").replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`;
+  doc.save(fileName);
+}
+
+    els.loginBtn.addEventListener("click", () => {
+      const username = els.loginUsername.value.trim();
+      const password = els.loginPassword.value.trim();
+
+      if (!username || !password) {
+        setStatus([
+          { type: "err", text: "Bitte Benutzername und Passwort eingeben." }
+        ]);
+        return;
+      }
+
+      state.isLoggedIn = true;
+      updateLoginUi();
+    });
+
+    els.logoutBtn.addEventListener("click", () => {
+      state.isLoggedIn = false;
+      updateLoginUi();
+    });
+
+    [
+      els.companyName,
+      els.contactEmail,
+      els.firstName,
+      els.lastName,
+      els.street,
+      els.houseNumber,
+      els.postalCode,
+      els.city,
+      els.internalNote
+    ].forEach(el => {
+      el.addEventListener("input", renderSummary);
+    });
+
+    if (els.waiveHardwareCheckbox) {
+      els.waiveHardwareCheckbox.addEventListener("change", () => {
+        state.waiveHardwarePrice = els.waiveHardwareCheckbox.checked;
+        renderSummary();
+      });
+    }
+
+    if (els.waiveConnectionCheckbox) {
+      els.waiveConnectionCheckbox.addEventListener("change", () => {
+        state.waiveConnectionPrice = els.waiveConnectionCheckbox.checked;
+        renderSummary();
+      });
+    }
+
+    els.checkAddressBtn.addEventListener("click", () => {
+      if (!validateRequiredFields()) {
+        setStatus([
+          { type: "err", text: "Bitte zuerst alle Pflichtfelder für die Adresse ausfüllen." }
+        ]);
+        return;
+      }
+
+      setStatus([
+        { type: "ok", text: "Frontend-Daten sind vollständig." },
+        { type: "", text: "Später wird hier der Versatel-Adresscheck gestartet." },
+        { type: "", text: "Danach kann das Produkt automatisiert gewählt werden." }
+      ]);
+    });
+
+    els.sendOfferBtn.addEventListener("click", () => {
+      if (!validateRequiredFields()) {
+        setStatus([
+          { type: "err", text: "Bitte zuerst alle Pflichtfelder für das Angebot ausfüllen." }
+        ]);
+        return;
+      }
+
+      createOfferPdf();
+
+      setStatus([
+        { type: "ok", text: "PDF wurde erstellt und heruntergeladen." },
+        { type: "", text: "Nächster Schritt: Backend anbinden, um das PDF automatisch per E-Mail zu versenden." }
+      ]);
+    });
+
+    ensureSelections();
+    renderAll();
+    updateLoginUi();
+  </script>
+</body>
+</html>
