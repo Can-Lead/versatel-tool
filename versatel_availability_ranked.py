@@ -52,6 +52,7 @@ def safe_text(value: Any) -> str:
     return clean(value)
 
 BASE_URL = "https://preview.versatel.psp.infrafin.net/map"
+LOGIN_URL = "https://login-staging.psp.infrafin.net/realms/psp/protocol/openid-connect/auth?approval_prompt=force&client_id=oauth2-proxy&redirect_uri=https%3A%2F%2Foauth-staging.psp.infrafin.net%2Foauth2%2Fcallback&response_type=code&scope=openid+profile+email&state=d-2peCzvRjMB-YIxvSaRO02JYcXUq897OKourk31VSA%3Ahttps%3A%2F%2Fpreview.versatel.psp.infrafin.net%2F"
 DEFAULT_STATE_FILE = "versatel_state.json"
 DEFAULT_DB_FILE = "versatel_availability.sqlite"
 
@@ -337,6 +338,13 @@ class VersatelAvailabilityBot:
         self._dismiss_location_prompt()
         sleep_with_cancel(self.page, 200)
 
+    def open_login(self):
+        raise_if_cancel_requested()
+        self.page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=self.timeout_ms)
+        sleep_with_cancel(self.page, 600)
+        self._dismiss_location_prompt()
+        sleep_with_cancel(self.page, 200)
+
     def _has_session_data(self) -> bool:
         try:
             cookies = self.context.cookies([BASE_URL]) if self.context else []
@@ -407,7 +415,7 @@ class VersatelAvailabilityBot:
         if not self.page or self.page.is_closed():
             raise LoginRequired("Browser-Seite für Versatel-Login ist nicht verfügbar.")
 
-        self.open_map()
+        self.open_login()
 
         deadline = time.time() + wait_seconds
         last_error = ""
