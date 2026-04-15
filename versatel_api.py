@@ -75,21 +75,33 @@ def versatel_check(payload: VersatelCheckRequest):
     )
 
     try:
-        bot.start()
+        print("[VERSATEL API] check gestartet")
+        print(f"[VERSATEL API] Adresse: {street} {house_number}, {postal_code} {city}")
+
+        try:
+            bot.start()
+            print("[VERSATEL API] Browser erfolgreich gestartet")
+        except Exception as e:
+            print(f"[VERSATEL API] Browserstart fehlgeschlagen: {e}")
+            raise HTTPException(status_code=500, detail=f"Browserstart fehlgeschlagen: {e}")
 
         try:
             bot.ensure_logged_in()
+            print("[VERSATEL API] Bestehende Session gültig")
         except LoginRequired:
+            print("[VERSATEL API] Keine gültige Session, starte Auto-Login")
             login_result = bot.login_with_credentials(
                 username=VERSATEL_USERNAME,
                 password=VERSATEL_PASSWORD,
                 wait_seconds=60,
             )
+            print(f"[VERSATEL API] Login-Ergebnis: {login_result}")
 
             if not login_result or login_result.get("status") != "ok":
                 raise HTTPException(status_code=401, detail="Versatel-Login konnte nicht aufgebaut werden.")
 
             bot.ensure_logged_in()
+            print("[VERSATEL API] Session nach Login gültig")
 
         row = AddressInput(
             row_index=0,
@@ -102,6 +114,7 @@ def versatel_check(payload: VersatelCheckRequest):
         )
 
         result = bot.check_address(row)
+        print(f"[VERSATEL API] Check-Ergebnis: status={result.status} error={result.error}")
 
         return {
             "status": result.status,
@@ -115,8 +128,10 @@ def versatel_check(payload: VersatelCheckRequest):
     except HTTPException:
         raise
     except LoginRequired as e:
+        print(f"[VERSATEL API] LoginRequired: {e}")
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
+        print(f"[VERSATEL API] Unerwarteter Fehler: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         bot.stop()
