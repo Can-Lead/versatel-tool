@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import re
@@ -55,6 +56,7 @@ BASE_URL = "https://preview.versatel.psp.infrafin.net/map"
 LOGIN_URL = "https://login-staging.psp.infrafin.net/realms/psp/protocol/openid-connect/auth?approval_prompt=force&client_id=oauth2-proxy&redirect_uri=https%3A%2F%2Foauth-staging.psp.infrafin.net%2Foauth2%2Fcallback&response_type=code&scope=openid+profile+email&state=d-2peCzvRjMB-YIxvSaRO02JYcXUq897OKourk31VSA%3Ahttps%3A%2F%2Fpreview.versatel.psp.infrafin.net%2F"
 DEFAULT_STATE_FILE = "versatel_state.json"
 DEFAULT_DB_FILE = "versatel_availability.sqlite"
+DEBUG_DIR = Path("versatel_debug")
 
 VERSATEL_USERNAME = "info@can-lead.de"
 VERSATEL_PASSWORD = "Vodafone01!"
@@ -246,17 +248,34 @@ class VersatelAvailabilityBot:
         self.browser = None
         self.context = None
         self.page = None
+        self.debug_dir = DEBUG_DIR.resolve()
+        self.debug_dir.mkdir(parents=True, exist_ok=True)
+        self.trace_started = False
 
     def start(self):
+        print("[VERSATEL] start() aufgerufen")
+        print(f"[VERSATEL] cwd={os.getcwd()}")
+        print(f"[VERSATEL] headless={self.headless}")
+        print(f"[VERSATEL] debug_dir={self.debug_dir}")
+
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(
-            channel="chrome",
-            headless=self.headless,
-            slow_mo=SLOW_MO_MS,
-            args=[
-                "--deny-permission-prompts",
-            ],
-        )
+
+        try:
+            self.browser = self.playwright.chromium.launch(
+                channel="chrome",
+                headless=True,
+                slow_mo=SLOW_MO_MS,
+                args=[
+                    "--deny-permission-prompts",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+            print("[VERSATEL] Browser erfolgreich gestartet")
+        except Exception as e:
+            print(f"[VERSATEL] Browserstart fehlgeschlagen: {e}")
+            raise
 
         state_path = Path(self.state_file).resolve()
         self.state_file = str(state_path)
@@ -264,6 +283,7 @@ class VersatelAvailabilityBot:
         context_kwargs = {
             "ignore_https_errors": True,
             "locale": "de-DE",
+            "viewport": {"width": 1440, "height": 1200},
         }
 
         if self.load_state and state_path.exists():
@@ -273,6 +293,8 @@ class VersatelAvailabilityBot:
             print(f"[VERSATEL] Kein storage_state geladen: {state_path}")
 
         self.context = self.browser.new_context(**context_kwargs)
+        self.context.tracing.start(screenshots=True, snapshots=True, sources=True)
+        self.trace_started = True
 
         self.context.add_init_script("""
             Object.defineProperty(navigator, 'geolocation', {
@@ -303,7 +325,22 @@ class VersatelAvailabilityBot:
         self.page = self.context.new_page()
         self.page.set_default_timeout(self.timeout_ms)
 
+        self.page.on("console", lambda msg: print(f"[VERSATEL CONSOLE] {msg.type}: {msg.text}"))
+        self.page.on("pageerror", lambda err: print(f"[VERSATEL PAGEERROR] {err}"))
+        self.page.on("requestfailed", lambda req: print(f"[VERSATEL REQUESTFAILED] {req.method} {req.url} -> {req.failure}"))
+
+        self._save_debug_step("01_browser_started")
+
     def stop(self):
+        try:
+            if self.context and self.trace_started:
+                trace_path = self.debug_dir / "trace.zip"
+                self.context.tracing.stop(path=str(trace_path))
+                self.trace_started = False
+                print(f"[VERSATEL] Trace gespeichert: {trace_path}")
+        except Exception as e:
+            print(f"[VERSATEL] Trace-Stop fehlgeschlagen: {e}")
+
         try:
             if self.context:
                 self.context.close()
@@ -331,19 +368,53 @@ class VersatelAvailabilityBot:
         self.context.storage_state(path=str(state_path))
         self.state_file = str(state_path)
 
+    def _save_debug_step(self, name: str):
+        try:
+            if not self.page or self.page.is_closed():
+                print(f"[VERSATEL] Screenshot übersprungen ({name}): keine Seite")
+                return
+
+            safe_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", name).strip("_") or "step"
+            png_path = self.debug_dir / f"{safe_name}.png"
+            html_path = self.debug_dir / f"{safe_name}.html"
+            txt_path = self.debug_dir / f"{safe_name}.txt"
+
+            self.page.screenshot(path=str(png_path), full_page=True)
+
+            try:
+                html = self.page.content()
+                html_path.write_text(html, encoding="utf-8")
+            except Exception:
+                pass
+
+            try:
+                body = self.page.locator("body").inner_text()
+                txt_path.write_text(body, encoding="utf-8")
+            except Exception:
+                pass
+
+            print(f"[VERSATEL] Debug-Step gespeichert: {safe_name}")
+            print(f"[VERSATEL] URL: {self.page.url}")
+        except Exception as e:
+            print(f"[VERSATEL] Screenshot fehlgeschlagen ({name}): {e}")
+
     def open_map(self):
         raise_if_cancel_requested()
+        print(f"[VERSATEL] Öffne MAP: {BASE_URL}")
         self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=self.timeout_ms)
         sleep_with_cancel(self.page, 600)
         self._dismiss_location_prompt()
         sleep_with_cancel(self.page, 200)
+        self._save_debug_step("02_open_map")
 
     def open_login(self):
         raise_if_cancel_requested()
+        print(f"[VERSATEL] Öffne LOGIN: {LOGIN_URL}")
         self.page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=self.timeout_ms)
         sleep_with_cancel(self.page, 600)
         self._dismiss_location_prompt()
         sleep_with_cancel(self.page, 200)
+        self._save_debug_step("03_open_login")
 
     def _has_session_data(self) -> bool:
         try:
@@ -415,6 +486,7 @@ class VersatelAvailabilityBot:
         if not self.page or self.page.is_closed():
             raise LoginRequired("Browser-Seite für Versatel-Login ist nicht verfügbar.")
 
+        print(f"[VERSATEL] login_with_credentials() gestartet für Benutzer {username}")
         self.open_login()
 
         deadline = time.time() + wait_seconds
@@ -475,6 +547,7 @@ class VersatelAvailabilityBot:
                         break
 
                 if user_field and pass_field:
+                    print("[VERSATEL] Login-Felder erkannt")
                     user_field.fill("")
                     user_field.fill(username)
                     sleep_with_cancel(self.page, 150)
@@ -483,21 +556,27 @@ class VersatelAvailabilityBot:
                     pass_field.fill(password)
                     sleep_with_cancel(self.page, 150)
 
+                    self._save_debug_step("04_login_filled")
+
                     clicked = False
                     for selector in submit_selectors:
                         btn = self.page.locator(selector).first
                         if btn.count() > 0:
+                            print(f"[VERSATEL] Klicke Login-Button: {selector}")
                             btn.click(timeout=2000)
                             clicked = True
                             break
 
                     if not clicked:
+                        print("[VERSATEL] Kein Login-Button erkannt, sende Enter")
                         pass_field.press("Enter")
 
                     sleep_with_cancel(self.page, 1500)
+                    self._save_debug_step("05_after_login_submit")
 
                     if self._is_logged_in():
                         self.save_state()
+                        self._save_debug_step("06_login_success")
                         return {
                             "status": "ok",
                             "state_file": self.state_file,
@@ -505,6 +584,8 @@ class VersatelAvailabilityBot:
                         }
             except Exception as e:
                 last_error = str(e)
+                print(f"[VERSATEL] Login-Schleife Fehler: {last_error}")
+                self._save_debug_step("login_loop_error")
 
             sleep_with_cancel(self.page, 1000)
 
