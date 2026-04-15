@@ -249,6 +249,7 @@ class VersatelAvailabilityBot:
     def start(self):
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(
+            channel="chrome",
             headless=self.headless,
             slow_mo=SLOW_MO_MS,
             args=[
