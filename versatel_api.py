@@ -10,7 +10,12 @@ from versatel_availability_ranked import (
 app = FastAPI()
 
 
-class CheckAddressWithLoginRequest(BaseModel):
+class VersatelLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class VersatelCheckRequest(BaseModel):
     street: str
     houseNumber: str
     postalCode: str
@@ -18,8 +23,40 @@ class CheckAddressWithLoginRequest(BaseModel):
     externalId: str = ""
 
 
-@app.post("/api/versatel/check-address-with-login")
-def check_address_with_login(payload: CheckAddressWithLoginRequest):
+@app.post("/api/versatel/login")
+def versatel_login(payload: VersatelLoginRequest):
+    username = (payload.username or "").strip()
+    password = (payload.password or "").strip()
+
+    if not username:
+        raise HTTPException(status_code=400, detail="Benutzername fehlt.")
+    if not password:
+        raise HTTPException(status_code=400, detail="Passwort fehlt.")
+
+    bot = VersatelAvailabilityBot(
+        headless=False,
+        load_state=False,
+    )
+
+    try:
+        bot.start()
+        result = bot.login_with_credentials(
+            username=username,
+            password=password,
+            wait_seconds=60,
+        )
+
+        return result
+    except LoginRequired as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        bot.stop()
+
+
+@app.post("/api/versatel/check")
+def versatel_check(payload: VersatelCheckRequest):
     street = (payload.street or "").strip()
     house_number = (payload.houseNumber or "").strip()
     postal_code = (payload.postalCode or "").strip()
@@ -42,6 +79,7 @@ def check_address_with_login(payload: CheckAddressWithLoginRequest):
 
     try:
         bot.start()
+        bot.ensure_logged_in()
 
         row = AddressInput(
             row_index=0,
@@ -53,11 +91,7 @@ def check_address_with_login(payload: CheckAddressWithLoginRequest):
             external_id=external_id,
         )
 
-        result = bot.login_and_check_address(
-            row=row,
-            login_wait_seconds=60,
-            post_login_delay_seconds=3.0,
-        )
+        result = bot.check_address(row)
 
         return {
             "status": result.status,
@@ -68,7 +102,6 @@ def check_address_with_login(payload: CheckAddressWithLoginRequest):
             "source_url": result.source_url,
             "checked_at": result.checked_at,
         }
-
     except LoginRequired as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
