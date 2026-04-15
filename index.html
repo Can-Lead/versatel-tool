@@ -378,6 +378,10 @@
       gap: 14px;
     }
 
+    .left-side .choice-grid {
+      grid-template-columns: 1fr;
+    }
+
     .choice-card {
       display: flex;
       align-items: center;
@@ -538,7 +542,7 @@
     </div>
 
     <div class="grid">
-      <aside class="panel-stack">
+      <aside class="panel-stack left-side">
         <div class="card">
           <div class="section-title">Ablauf</div>
           <div class="stepper">
@@ -594,6 +598,16 @@
         </div>
 
         <div class="card">
+          <div class="section-title">Vertragslaufzeit</div>
+          <div class="choice-grid" id="termChoices"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Service Level Agreement</div>
+          <div class="choice-grid" id="slaChoices"></div>
+        </div>
+
+        <div class="card hidden">
           <div class="section-title">Status</div>
           <div class="status-box" id="statusBox">
             <div class="status-line">
@@ -672,16 +686,6 @@
             <div class="card">
               <div class="section-title">Bandbreite</div>
               <div class="choice-grid" id="bandwidthChoices"></div>
-            </div>
-
-            <div class="card">
-              <div class="section-title">Vertragslaufzeit</div>
-              <div class="choice-grid" id="termChoices"></div>
-            </div>
-
-            <div class="card">
-              <div class="section-title">Service Level Agreement</div>
-              <div class="choice-grid" id="slaChoices"></div>
             </div>
 
             <div class="card">
