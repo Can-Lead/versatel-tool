@@ -36,7 +36,7 @@ def check_address_with_login(payload: CheckAddressWithLoginRequest):
         raise HTTPException(status_code=400, detail="Ort fehlt.")
 
     bot = VersatelAvailabilityBot(
-        headless=True,
+        headless=False,
         load_state=True,
     )
 
