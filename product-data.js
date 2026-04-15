@@ -508,13 +508,13 @@ window.PRODUCT_CATALOG = {
               bandwidthLabel: "2 Gbit/s",
               downloadMbit: 2000,
               uploadMbit: 2000,
-              monthlyPrice: 1299.00,
+              monthlyPrice: 1234.05,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 1299.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
-                { months: 48, monthlyPrice: 1299.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
-                { months: 60, monthlyPrice: 1299.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
+                { months: 36, monthlyPrice: 1234.05, listMonthlyPrice: 1299.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 48, monthlyPrice: 1169.10, listMonthlyPrice: 1299.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 60, monthlyPrice: 1136.63, listMonthlyPrice: 1299.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -532,13 +532,13 @@ window.PRODUCT_CATALOG = {
               bandwidthLabel: "5 Gbit/s",
               downloadMbit: 5000,
               uploadMbit: 5000,
-              monthlyPrice: 1999.00,
+              monthlyPrice: 1899.05,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 1999.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
-                { months: 48, monthlyPrice: 1999.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
-                { months: 60, monthlyPrice: 1999.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
+                { months: 36, monthlyPrice: 1899.05, listMonthlyPrice: 1999.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 48, monthlyPrice: 1799.10, listMonthlyPrice: 1999.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 60, monthlyPrice: 1749.13, listMonthlyPrice: 1999.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -550,19 +550,19 @@ window.PRODUCT_CATALOG = {
                 { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
               ]
             },
-            {
+                        {
               key: "10000_10000",
               label: "10 / 10 Gbit/s",
               bandwidthLabel: "10 Gbit/s",
               downloadMbit: 10000,
               uploadMbit: 10000,
-              monthlyPrice: 2599.00,
+              monthlyPrice: 2469.05,
               connectionPrice: 1500.00,
               hardwarePriceOnce: 149.00,
               terms: [
-                { months: 36, monthlyPrice: 2599.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
-                { months: 48, monthlyPrice: 2599.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
-                { months: 60, monthlyPrice: 2599.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
+                { months: 36, monthlyPrice: 2469.05, listMonthlyPrice: 2599.00, connectionPrice: 1500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 48, monthlyPrice: 2339.10, listMonthlyPrice: 2599.00, connectionPrice: 500.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] },
+                { months: 60, monthlyPrice: 2274.13, listMonthlyPrice: 2599.00, connectionPrice: 0.00, hardwarePriceOnce: 149.00, applicableDiscountKeys: ["premium_connection_discount_all"] }
               ],
               slaOptions: [
                 { key: "basis", label: "Basis", priceMonthly: 0.00, available: true },
@@ -573,7 +573,7 @@ window.PRODUCT_CATALOG = {
                 { key: "sip_einzelanschluss", label: "SIP Einzelanschluss", priceMonthly: 0.00, available: true },
                 { key: "sip_ddi", label: "SIP DDi Sprachkanäle", priceMonthly: 0.00, available: true }
               ]
-            }
+            },
           ]
         },
 
