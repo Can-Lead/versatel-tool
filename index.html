@@ -803,6 +803,7 @@
 <script src="partner-logo.js"></script>
 <script>
     const productConfig = window.PRODUCT_CATALOG.families;
+    const API_BASE = "https://versatel.canlead.de";
 
     const state = {
       isLoggedIn: false,
@@ -1305,7 +1306,7 @@
       ]);
 
       try {
-        const response = await fetch("/api/versatel/check", {
+        const response = await fetch(`${API_BASE}/api/versatel/check`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -1731,7 +1732,7 @@
       ]);
 
       try {
-        const response = await fetch("/api/versatel/login", {
+        const response = await fetch(`${API_BASE}/api/versatel/login`, {
           method: "POST"
         });
 
