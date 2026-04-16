@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from versatel_availability_ranked import (
@@ -10,6 +11,29 @@ from versatel_availability_ranked import (
 )
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://versatel.can-lead.de",
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/api/versatel/debug-ping")
+def versatel_debug_ping():
+    return {
+        "ok": True,
+        "source": "fastapi",
+        "message": "debug-ping-aus-versatel_api.py"
+    }
 
 
 @app.get("/api/versatel/debug-ping")
