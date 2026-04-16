@@ -803,7 +803,7 @@
 <script src="partner-logo.js"></script>
 <script>
     const productConfig = window.PRODUCT_CATALOG.families;
-    const API_BASE = "https://DEIN-WEB-SERVICE.onrender.com";
+    const API_BASE = "https://versatel.can-lead.de";
 
     const state = {
       isLoggedIn: false,
@@ -1721,54 +1721,24 @@
   doc.save(fileName);
 }
 
-    els.loginBtn.addEventListener("click", async () => {
-      const originalButtonText = els.loginBtn.textContent;
-      els.loginBtn.disabled = true;
-      els.loginBtn.textContent = "Login läuft ...";
+    els.loginBtn.addEventListener("click", () => {
+      const username = els.loginUsername.value.trim();
+      const password = els.loginPassword.value.trim();
+
+      if (!username || !password) {
+        setStatus([
+          { type: "err", text: "Bitte Benutzername und Passwort eingeben." }
+        ]);
+        return;
+      }
+
+      state.isLoggedIn = true;
+      updateLoginUi();
 
       setStatus([
-        { type: "warn", text: "Versatel-Login wird mit den fest hinterlegten Backend-Zugangsdaten gestartet." },
-        { type: "", text: "Bitte warten, bis die Session aufgebaut wurde." }
+        { type: "ok", text: "Tool-Login erfolgreich." },
+        { type: "", text: "Adresse kann jetzt geprüft werden." }
       ]);
-
-      try {
-        const response = await fetch(`${API_BASE}/api/versatel/login`, {
-          method: "POST"
-        });
-
-        const rawText = await response.text();
-        let payload = {};
-
-        if (rawText && rawText.trim()) {
-          try {
-            payload = JSON.parse(rawText);
-          } catch (parseError) {
-            throw new Error(`Server antwortet nicht als JSON. HTTP ${response.status}`);
-          }
-        }
-
-        if (!response.ok) {
-          throw new Error(payload?.detail || payload?.error || `Login fehlgeschlagen. HTTP ${response.status}`);
-        }
-
-        state.isLoggedIn = true;
-        updateLoginUi();
-
-        setStatus([
-          { type: "ok", text: payload?.message || "Versatel-Session erfolgreich gespeichert." },
-          { type: "", text: "Adresse kann jetzt geprüft werden." }
-        ]);
-      } catch (error) {
-        state.isLoggedIn = false;
-        updateLoginUi();
-
-        setStatus([
-          { type: "err", text: error.message || "Login fehlgeschlagen." }
-        ]);
-      } finally {
-        els.loginBtn.disabled = false;
-        els.loginBtn.textContent = originalButtonText;
-      }
     });
 
     els.logoutBtn.addEventListener("click", () => {
